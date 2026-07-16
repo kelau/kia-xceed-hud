@@ -57,7 +57,7 @@ static void initDisplay(){
   dashboard.sendToBack();
 }
 static void initWifi(){WiFi.mode(WIFI_STA);WiFi.setHostname(test_mode::enabled?test_mode::mdnsName:cfg.hostname.c_str());setenv("TZ","CET-1CEST,M3.5.0,M10.5.0/3",1);tzset();configTime(0,0,"pool.ntp.org","time.cloudflare.com");if(test_mode::enabled)WiFi.begin(test_mode::ssid,test_mode::password);else if(cfg.ssid.length())WiFi.begin(cfg.ssid,cfg.password);else WiFi.disconnect(false,false);}
-static void updateTestNetwork(){if(otaConnecting||otaStarted||!test_mode::enabled||WiFi.status()!=WL_CONNECTED)return;if(!mdnsStarted){mdnsStarted=MDNS.begin(test_mode::mdnsName);if(mdnsStarted)MDNS.addService("http","tcp",80);}static IPAddress shown;if(shown!=WiFi.localIP()||lv_obj_has_flag(accessLabel,LV_OBJ_FLAG_HIDDEN)){shown=WiFi.localIP();lv_label_set_text_fmt(accessLabel,"TEST MODE - LAN access\nhttp://%s.local\nhttp://%s",test_mode::mdnsName,shown.toString().c_str());lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);}}
+static void updateTestNetwork(){if(!displayStarted||!accessLabel||otaConnecting||otaStarted||!test_mode::enabled||WiFi.status()!=WL_CONNECTED)return;if(!mdnsStarted){mdnsStarted=MDNS.begin(test_mode::mdnsName);if(mdnsStarted)MDNS.addService("http","tcp",80);}static IPAddress shown;if(shown!=WiFi.localIP()||lv_obj_has_flag(accessLabel,LV_OBJ_FLAG_HIDDEN)){shown=WiFi.localIP();lv_label_set_text_fmt(accessLabel,"TEST MODE - LAN access\nhttp://%s.local\nhttp://%s",test_mode::mdnsName,shown.toString().c_str());lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);}}
 static void analysisRoutes(){
   server.on("/api/pids",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;auto a=j.to<JsonArray>();for(const auto&d:SAE_PIDS){auto o=a.add<JsonObject>();char pid[3];snprintf(pid,sizeof(pid),"%02X",d.pid);o["pid"]=pid;o["name"]=d.name;o["unit"]=d.unit;o["min"]=d.minimum;o["max"]=d.maximum;o["bytes"]=d.bytes;bool seen=false,supported=false;for(size_t n=0;n<frameCount;n++){auto&f=frames[(frameHead+256-frameCount+n)%256];if(f.id<0x7E8||f.id>0x7EF||f.dlc<4||f.data[1]!=0x41)continue;if(f.data[2]==d.pid)seen=true;if((f.data[2]%0x20)==0&&f.dlc>=7&&d.pid>f.data[2]&&d.pid<=f.data[2]+32){uint8_t bit=d.pid-f.data[2]-1;supported|=(f.data[3+bit/8]&(0x80>>(bit%8)))!=0;}}o["seen"]=seen;o["supported"]=supported;}sendJson(r,j);});
   server.on("/api/ecus",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;auto a=j.to<JsonArray>();for(uint32_t id=0x7E8;id<=0x7EF;id++){uint32_t count=0,last=0;bool pids[256]={};for(size_t n=0;n<frameCount;n++){auto&f=frames[(frameHead+256-frameCount+n)%256];if(f.id!=id)continue;count++;last=f.ms;if(f.dlc>=3&&f.data[1]==0x41)pids[f.data[2]]=true;}if(!count)continue;auto o=a.add<JsonObject>();char name[8];snprintf(name,sizeof(name),"ECU %03X",(unsigned)id);o["id"]=id;o["name"]=name;o["frames"]=count;o["lastMs"]=last;auto pa=o["pids"].to<JsonArray>();for(int p=0;p<256;p++)if(pids[p])pa.add(p);}sendJson(r,j);});
@@ -115,5 +115,5 @@ void loop() {
     last=millis();
     dashboard.update(cfg,telemetry,millis());
   }
-  display.update(); delay(2);
+  if(displayStarted)display.update(); delay(2);
 }
