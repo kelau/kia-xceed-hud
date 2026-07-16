@@ -1,0 +1,65 @@
+#pragma once
+#include <stdint.h>
+#include <stddef.h>
+#include <string>
+#include <array>
+
+namespace hud {
+struct CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
+struct Telemetry {
+  float speedKph=0, rpm=0, coolantC=0, soc=0, engineLoad=0;
+  float gpsSpeedKph=0, latitude=0, longitude=0, tripKm=0;
+  float accelLong=0, accelLat=0; bool gpsFix=false; uint32_t lastCanMs=0;
+};
+struct Widget { std::string id; int16_t x=0,y=0,w=100,h=70; bool visible=true; };
+
+inline int hexNibble(char c) { return c>='0'&&c<='9'?c-'0':c>='a'&&c<='f'?c-'a'+10:c>='A'&&c<='F'?c-'A'+10:-1; }
+inline bool frameMatches(const CanFrame& f, const std::string& query) {
+  if(query.empty()) return true;
+  char id[9]; snprintf(id,sizeof(id),"%03X",(unsigned)f.id);
+  std::string hay=id;
+  char b[4]; for(unsigned i=0;i<f.dlc;i++){snprintf(b,sizeof(b)," %02X",f.data[i]);hay+=b;}
+  std::string q=query; for(char& c:q) if(c>='a'&&c<='f') c-=32;
+  return hay.find(q)!=std::string::npos;
+}
+inline bool decodeObd(const CanFrame& f, Telemetry& t) {
+  if(f.id<0x7E8||f.id>0x7EF||f.dlc<4||f.data[1]!=0x41) return false;
+  switch(f.data[2]) {
+    case 0x04: t.engineLoad=f.data[3]*100.0f/255.0f; return true;
+    case 0x05: t.coolantC=(float)f.data[3]-40; return true;
+    case 0x0C: if(f.dlc<5)return false; t.rpm=((f.data[3]<<8)|f.data[4])/4.0f; return true;
+    case 0x0D: t.speedKph=f.data[3]; return true;
+    case 0x2F: t.soc=f.data[3]*100.0f/255.0f; return true;
+    default: return false;
+  }
+}
+inline std::string obdDescription(const CanFrame& f) {
+  if(f.id<0x7E8||f.id>0x7EF||f.dlc<4||f.data[1]!=0x41)return {};
+  char out[48];switch(f.data[2]){
+    case 0x04:snprintf(out,sizeof(out),"Load %.1f%%",f.data[3]*100.0/255.0);break;
+    case 0x05:snprintf(out,sizeof(out),"Coolant %d C",(int)f.data[3]-40);break;
+    case 0x0C:if(f.dlc<5)return {};snprintf(out,sizeof(out),"RPM %.0f",((f.data[3]<<8)|f.data[4])/4.0);break;
+    case 0x0D:snprintf(out,sizeof(out),"Speed %u km/h",f.data[3]);break;
+    case 0x2F:snprintf(out,sizeof(out),"Fuel input %.1f%%",f.data[3]*100.0/255.0);break;
+    default:snprintf(out,sizeof(out),"Mode 01 PID %02X",f.data[2]);
+  }return out;
+}
+inline bool validateWidget(const Widget& w) {
+  return !w.id.empty()&&w.x>=0&&w.y>=0&&w.w>=40&&w.h>=30&&w.x+w.w<=480&&w.y+w.h<=480;
+}
+
+class PinGate {
+ public:
+  static constexpr uint32_t ARM_MS=60000, PIN_MS=120000, SESSION_MS=900000;
+  void arm(uint32_t now, uint32_t pin){armedUntil_=now+ARM_MS;pinUntil_=now+PIN_MS;pin_=(pin>=100000&&pin<=999999)?pin:pin%900000+100000;session_=0;}
+  bool canShowLogin(uint32_t now)const{return before(now,armedUntil_)&&before(now,pinUntil_);}
+  bool login(uint32_t now,uint32_t pin){if(!canShowLogin(now)||pin!=pin_)return false;session_=mix(pin^now^0x9e3779b9);sessionUntil_=now+SESSION_MS;pin_=0;return true;}
+  bool authorized(uint32_t now,uint32_t token)const{return token&&token==session_&&before(now,sessionUntil_);}
+  uint32_t pin()const{return pin_;} uint32_t token()const{return session_;}
+  void revoke(){armedUntil_=pinUntil_=sessionUntil_=pin_=session_=0;}
+ private:
+  static bool before(uint32_t a,uint32_t b){return (int32_t)(b-a)>0;}
+  static uint32_t mix(uint32_t x){x^=x>>16;x*=0x7feb352d;x^=x>>15;x*=0x846ca68b;x^=x>>16;return x?x:1;}
+  uint32_t armedUntil_=0,pinUntil_=0,sessionUntil_=0,pin_=0,session_=0;
+};
+}

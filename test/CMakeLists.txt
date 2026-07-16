@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(kia_hud_tests LANGUAGES CXX)
+enable_testing()
+add_executable(core_tests core_tests.cpp)
+target_compile_features(core_tests PRIVATE cxx_std_17)
+target_include_directories(core_tests PRIVATE ../firmware/KiaXCeedHUD/src)
+add_test(NAME core_tests COMMAND core_tests)
