@@ -12,6 +12,9 @@
    power/regen, engine state, energy consumption, range and charge status.
 6. Add SD-card opt-in logging in a documented CSV format, privacy controls, trip
    summaries and offline map-free speed-limit alerts only when reliable.
+7. Extend the implemented byte inspector, formula sandbox, PID discovery, ISO-TP,
+   ECU map, CSV/PCAP and DBC tools, correlation, markers, diagnostics and range
+   alerts with SD-card persistence and longer analysis windows.
 
 Avoid cloud dependency: the HUD should boot, display and authenticate entirely
 offline. Prefer a phone-provided hotspot over storing a home network password in a

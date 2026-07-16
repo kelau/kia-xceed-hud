@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string>
 #include <array>
+#include "StandardPids.h"
 
 namespace hud {
 struct CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
@@ -11,7 +12,7 @@ struct Telemetry {
   float gpsSpeedKph=0, latitude=0, longitude=0, tripKm=0;
   float accelLong=0, accelLat=0; bool gpsFix=false; uint32_t lastCanMs=0;
 };
-struct Widget { std::string id; int16_t x=0,y=0,w=100,h=70; bool visible=true; };
+struct Widget { std::string id; int16_t x=0,y=0,w=100,h=70; bool visible=true; char title[32]{}; uint8_t fontSize=18; uint32_t background=0x102a38,textColor=0xffffff; };
 
 inline int hexNibble(char c) { return c>='0'&&c<='9'?c-'0':c>='a'&&c<='f'?c-'a'+10:c>='A'&&c<='F'?c-'A'+10:-1; }
 inline bool frameMatches(const CanFrame& f, const std::string& query) {
@@ -44,6 +45,9 @@ inline std::string obdDescription(const CanFrame& f) {
     default:snprintf(out,sizeof(out),"Mode 01 PID %02X",f.data[2]);
   }return out;
 }
+inline const char* obdPidName(uint8_t pid){auto d=findPid(pid);return d?d->name:"Unknown Mode 01 PID";}
+inline std::string frameTypeKey(const CanFrame&f){char key[16];if(f.id>=0x7E8&&f.id<=0x7EF&&f.dlc>=3&&f.data[1]==0x41)snprintf(key,sizeof(key),"%03X:%02X",(unsigned)f.id,f.data[2]);else snprintf(key,sizeof(key),"%03X",(unsigned)f.id);return key;}
+inline bool frameMetric(const CanFrame&f,float&value,float&realMin,float&realMax,const char*&unit){if(f.id<0x7E8||f.id>0x7EF||f.dlc<4||f.data[1]!=0x41)return false;auto d=findPid(f.data[2]);if(!d||!decodePidValue(*d,&f.data[3],f.dlc-3,value))return false;realMin=d->minimum;realMax=d->maximum;unit=d->unit;return true;}
 inline bool validateWidget(const Widget& w) {
   return !w.id.empty()&&w.x>=0&&w.y>=0&&w.w>=40&&w.h>=30&&w.x+w.w<=480&&w.y+w.h<=480;
 }
