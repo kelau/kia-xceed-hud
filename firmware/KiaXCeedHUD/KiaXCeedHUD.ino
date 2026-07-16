@@ -21,7 +21,7 @@
 #include "src/AnalysisUi.h"
 
 using namespace hud;
-Config cfg; VehicleBus bus; Telemetry telemetry; TemporaryAccess accessGate;
+Config cfg,displayCfg; VehicleBus bus; Telemetry telemetry; TemporaryAccess accessGate;
 AsyncWebServer server(80); DNSServer dns; DisplayPort display; Dashboard dashboard;
 std::array<CanFrame,256> frames; size_t frameHead=0, frameCount=0;
 lv_obj_t *accessLabel,*armButton,*qrCanvas;
@@ -30,7 +30,9 @@ volatile bool stopWebRequested=false;
 bool mdnsStarted=false;
 bool displayStarted=false;
 bool otaConnecting=false,otaStarted=false;uint32_t otaDeadline=0;String otaUploadPassword;
-volatile bool dashboardRebuildRequested=false,otaStartRequested=false;
+volatile bool otaStartRequested=false;
+volatile uint32_t displayConfigRequested=1;
+uint32_t displayConfigApplied=0;
 SemaphoreHandle_t configMutex=nullptr;
 static void initWifi();
 
@@ -70,12 +72,12 @@ static void routes(){
   server.on("/",HTTP_GET,[](AsyncWebServerRequest*r){uint32_t id=clientId(r);if(!fromTestLan(r)&&!accessGate.authorized(millis(),id)&&!accessGate.claim(millis(),id)){r->send(403,"text/plain","Touch Web access on the HUD and scan its QR code.");return;}r->send_P(200,"text/html",WEB_UI);});
   server.on("/analysis.js",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;r->send_P(200,"application/javascript",ANALYSIS_JS);});
   server.on("/generate_204",HTTP_GET,[](AsyncWebServerRequest*r){r->redirect("/");});server.on("/hotspot-detect.html",HTTP_GET,[](AsyncWebServerRequest*r){r->redirect("/");});server.on("/connecttest.txt",HTTP_GET,[](AsyncWebServerRequest*r){r->redirect("/");});server.on("/ncsi.txt",HTTP_GET,[](AsyncWebServerRequest*r){r->redirect("/");});
-  server.on("/api/status",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;j["version"]=FIRMWARE_VERSION;time_t now=time(nullptr);char date[40]="Not synchronized";if(now>1700000000){struct tm local;localtime_r(&now,&local);strftime(date,sizeof(date),"%Y-%m-%d %H:%M:%S %Z",&local);}j["date"]=date;j["uptime"]=millis()/1000;j["heap"]=ESP.getFreeHeap();j["minHeap"]=ESP.getMinFreeHeap();j["psramFree"]=ESP.getFreePsram();j["flashSize"]=ESP.getFlashChipSize();j["cpuMHz"]=ESP.getCpuFreqMHz();j["sdk"]=ESP.getSdkVersion();j["client"]=r->client()->remoteIP().toString();j["ip"]=WiFi.localIP().toString();j["rssi"]=WiFi.RSSI();j["canAge"]=millis()-telemetry.lastCanMs;j["frameCount"]=frameCount;j["simulateObd"]=cfg.simulateObd;j["listenOnly"]=cfg.canListenOnly;j["speed"]=telemetry.speedKph;j["rpm"]=telemetry.rpm;j["soc"]=telemetry.soc;j["coolant"]=telemetry.coolantC;j["load"]=telemetry.engineLoad;j["trip"]=telemetry.tripKm;j["gps"]=telemetry.gpsFix;sendJson(r,j);});
+  server.on("/api/status",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;j["version"]=FIRMWARE_VERSION;time_t now=time(nullptr);char date[40]="Not synchronized";if(now>1700000000){struct tm local;localtime_r(&now,&local);strftime(date,sizeof(date),"%Y-%m-%d %H:%M:%S %Z",&local);}j["date"]=date;j["uptime"]=millis()/1000;j["heap"]=ESP.getFreeHeap();j["minHeap"]=ESP.getMinFreeHeap();j["psramFree"]=ESP.getFreePsram();j["flashSize"]=ESP.getFlashChipSize();j["cpuMHz"]=ESP.getCpuFreqMHz();j["sdk"]=ESP.getSdkVersion();j["client"]=r->client()->remoteIP().toString();j["ip"]=WiFi.localIP().toString();j["rssi"]=WiFi.RSSI();j["canAge"]=millis()-telemetry.lastCanMs;j["frameCount"]=frameCount;j["displayConfigRequested"]=displayConfigRequested;j["displayConfigApplied"]=displayConfigApplied;j["simulateObd"]=cfg.simulateObd;j["listenOnly"]=cfg.canListenOnly;j["speed"]=telemetry.speedKph;j["rpm"]=telemetry.rpm;j["soc"]=telemetry.soc;j["coolant"]=telemetry.coolantC;j["load"]=telemetry.engineLoad;j["trip"]=telemetry.tripKm;j["gps"]=telemetry.gpsFix;sendJson(r,j);});
   server.on("/ota-config",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;r->send_P(200,"text/html",OTA_CONFIG_UI);});
   server.on("/api/ota-start",HTTP_POST,[](AsyncWebServerRequest*r){if(!auth(r))return;if(otaConnecting||otaStarted){r->send(409,"application/json","{\"error\":\"OTA already active\"}");return;}otaStartRequested=true;r->send(202,"application/json","{\"starting\":true}");});
   server.on("/ota-config",HTTP_POST,[](AsyncWebServerRequest*r){if(!auth(r))return;if(!r->hasParam("ssid",true)){r->send(400,"text/plain","SSID required");return;}String ssid=r->getParam("ssid",true)->value();String password=r->hasParam("password",true)?r->getParam("password",true)->value():"";if(ssid.length()>32||(!password.isEmpty()&&(password.length()<8||password.length()>63))){r->send(400,"text/plain","Invalid SSID or password length");return;}cfg.otaSsid=ssid;if(password.length())cfg.otaPassword=password;if(!cfg.save()){r->send(500,"text/plain","Save failed");return;}r->send(200,"text/html","<h2>Hotspot saved</h2><p>Return to Configuration and select Start OTA update.</p><a href='/'>Back</a>");});
   server.on("/api/config",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;String s;cfg.toJson(s);r->send(200,"application/json",s);});
-  server.on("/api/config",HTTP_PUT,[](AsyncWebServerRequest*r){},nullptr,[](AsyncWebServerRequest*r,uint8_t*d,size_t n,size_t index,size_t total){if(index==0){if(!auth(r))return;r->_tempObject=new String();((String*)r->_tempObject)->reserve(total);}auto body=(String*)r->_tempObject;if(!body)return;body->concat((const char*)d,n);if(index+n<total)return;xSemaphoreTake(configMutex,portMAX_DELAY);Config candidate=cfg;xSemaphoreGive(configMutex);bool ok=candidate.fromJson(*body)&&candidate.save();if(ok){xSemaphoreTake(configMutex,portMAX_DELAY);cfg=candidate;xSemaphoreGive(configMutex);}delete body;r->_tempObject=nullptr;if(!ok){r->send(400,"application/json","{\"error\":\"invalid config\"}");return;}dashboardRebuildRequested=true;r->send(200,"application/json","{\"saved\":true}");});
+  server.on("/api/config",HTTP_PUT,[](AsyncWebServerRequest*r){},nullptr,[](AsyncWebServerRequest*r,uint8_t*d,size_t n,size_t index,size_t total){if(index==0){if(!auth(r))return;r->_tempObject=new String();((String*)r->_tempObject)->reserve(total);}auto body=(String*)r->_tempObject;if(!body)return;body->concat((const char*)d,n);if(index+n<total)return;xSemaphoreTake(configMutex,portMAX_DELAY);Config candidate=cfg;xSemaphoreGive(configMutex);bool ok=candidate.fromJson(*body)&&candidate.save();uint32_t revision=0;if(ok){xSemaphoreTake(configMutex,portMAX_DELAY);cfg=candidate;revision=++displayConfigRequested;xSemaphoreGive(configMutex);}delete body;r->_tempObject=nullptr;if(!ok){r->send(400,"application/json","{\"error\":\"invalid config\"}");return;}char response[64];snprintf(response,sizeof(response),"{\"saved\":true,\"displayRevision\":%u}",(unsigned)revision);r->send(200,"application/json",response);});
   server.on("/api/frames",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;String q=r->hasParam("q")?r->getParam("q")->value():"";JsonDocument j;auto a=j.to<JsonArray>();for(size_t k=0;k<frameCount;k++){auto&f=frames[(frameHead+256-frameCount+k)%256];std::string decoded=obdDescription(f);String decodedText=decoded.c_str();if(!frameMatches(f,q.c_str())&&!decodedText.equalsIgnoreCase(q)&&decodedText.indexOf(q)<0)continue;auto o=a.add<JsonObject>();char id[9],bytes[25]={};snprintf(id,sizeof(id),"%03X",(unsigned)f.id);for(int i=0;i<f.dlc;i++)snprintf(bytes+strlen(bytes),sizeof(bytes)-strlen(bytes),"%02X%s",f.data[i],i+1<f.dlc?" ":"");o["ms"]=f.ms;o["id"]=id;o["data"]=bytes;if(!decoded.empty())o["decode"]=decoded;if(a.size()>=100)break;}sendJson(r,j);});
   server.on("/api/frame-types",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;auto out=j.to<JsonArray>();for(size_t k=0;k<frameCount&&out.size()<40;k++){auto&sample=frames[(frameHead+256-frameCount+k)%256];std::string key=frameTypeKey(sample);bool exists=false;for(auto v:out)if(v["key"].as<std::string>()==key){exists=true;break;}if(exists)continue;uint32_t count=0,first=0,last=0;float lo=0,hi=0,rlo=0,rhi=0;bool metric=false;const char*unit="";CanFrame latest=sample;for(size_t n=0;n<frameCount;n++){auto&f=frames[(frameHead+256-frameCount+n)%256];if(frameTypeKey(f)!=key)continue;float value,a,b;const char*u;if(!count)first=f.ms;last=f.ms;latest=f;count++;if(frameMetric(f,value,a,b,u)){if(!metric){lo=hi=value;rlo=a;rhi=b;unit=u;}else{lo=min(lo,value);hi=max(hi,value);}metric=true;}}auto o=out.add<JsonObject>();o["key"]=key;o["name"]=(latest.id>=0x7E8&&latest.id<=0x7EF&&latest.dlc>=3)?obdPidName(latest.data[2]):"CAN frame";o["count"]=count;o["frequency"]=(count>1&&last>first)?(count-1)*1000.0f/(last-first):0;o["min"]=metric?lo:0;o["max"]=metric?hi:0;o["realMin"]=rlo;o["realMax"]=rhi;o["unit"]=unit;o["metric"]=metric;char raw[25]={};for(int i=0;i<latest.dlc;i++)snprintf(raw+strlen(raw),sizeof(raw)-strlen(raw),"%02X%s",latest.data[i],i+1<latest.dlc?" ":"");o["raw"]=raw;}sendJson(r,j);});
   server.on("/api/frame-detail",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;if(!r->hasParam("key")){r->send(400,"application/json","{\"error\":\"key required\"}");return;}std::string key=r->getParam("key")->value().c_str();JsonDocument j;auto history=j["history"].to<JsonArray>();uint32_t count=0,first=0,last=0;float lo=0,hi=0,rlo=0,rhi=0;bool metric=false;const char*unit="";CanFrame latest;for(size_t n=0;n<frameCount;n++){auto&f=frames[(frameHead+256-frameCount+n)%256];if(frameTypeKey(f)!=key)continue;float value,a,b;const char*u;if(!count)first=f.ms;last=f.ms;latest=f;count++;if(frameMetric(f,value,a,b,u)){if(!metric){lo=hi=value;rlo=a;rhi=b;unit=u;}else{lo=min(lo,value);hi=max(hi,value);}metric=true;auto p=history.add<JsonObject>();p["ms"]=f.ms;p["value"]=value;}}j["key"]=key;j["name"]=(latest.id>=0x7E8&&latest.id<=0x7EF&&latest.dlc>=3)?obdPidName(latest.data[2]):"CAN frame";j["description"]=obdDescription(latest);j["count"]=count;j["frequency"]=(count>1&&last>first)?(count-1)*1000.0f/(last-first):0;j["min"]=metric?lo:0;j["max"]=metric?hi:0;j["realMin"]=rlo;j["realMax"]=rhi;j["unit"]=unit;j["metric"]=metric;char raw[25]={};for(int i=0;i<latest.dlc;i++)snprintf(raw+strlen(raw),sizeof(raw)-strlen(raw),"%02X%s",latest.data[i],i+1<latest.dlc?" ":"");j["raw"]=raw;sendJson(r,j);});
@@ -84,8 +86,8 @@ static void routes(){
 void setup(){
   Serial.begin(115200);delay(100);Serial.printf("Kia XCeed HUD v%s booting\n",FIRMWARE_VERSION);
   configMutex=xSemaphoreCreateMutex();
-  cfg.load();Serial.println("Config loaded");
-  displayStarted=true;initDisplay();Serial.println("Display and touch initialized");
+  cfg.load();displayCfg=cfg;Serial.println("Config loaded");
+  displayStarted=true;initDisplay();displayConfigApplied=displayConfigRequested;Serial.println("Display and touch initialized");
   initWifi();Serial.println("Wi-Fi stack initialized; temporary AP inactive");
   routes();Serial.println("Web service ready; touch Web access to arm");
   Serial.printf("CAN %s\n",bus.begin(cfg.canListenOnly,cfg.canRate)?"initialized":"initialization failed");
@@ -94,7 +96,7 @@ void loop() {
   dns.processNextRequest();
   if(otaStartRequested){otaStartRequested=false;startOta(nullptr);}
   updateOta();
-  if(dashboardRebuildRequested){dashboardRebuildRequested=false;xSemaphoreTake(configMutex,portMAX_DELAY);dashboard.rebuild(cfg);dashboard.sendToBack();xSemaphoreGive(configMutex);}
+  if(displayConfigApplied!=displayConfigRequested){xSemaphoreTake(configMutex,portMAX_DELAY);displayCfg=cfg;uint32_t revision=displayConfigRequested;xSemaphoreGive(configMutex);dashboard.rebuild(displayCfg);dashboard.update(displayCfg,telemetry,millis());dashboard.sendToBack();displayConfigApplied=revision;Serial.printf("Display config revision %u applied\n",(unsigned)revision);}
   updateTestNetwork();
   if(stopWebRequested){stopWebRequested=false;stopWeb();}
   CanFrame f;
@@ -116,7 +118,7 @@ void loop() {
   static uint32_t last=0;
   if(millis()-last>250) {
     last=millis();
-    xSemaphoreTake(configMutex,portMAX_DELAY);dashboard.update(cfg,telemetry,millis());xSemaphoreGive(configMutex);
+    dashboard.update(displayCfg,telemetry,millis());
   }
   if(displayStarted)display.update(); delay(2);
 }

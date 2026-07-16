@@ -62,4 +62,4 @@ random upload password. See [docs/BUILDING.md](docs/BUILDING.md#ota-maintenance)
 - [Safety and vehicle discovery](docs/SAFETY.md)
 - [Roadmap and recommendations](docs/ROADMAP.md)
 
-License: MIT. Version: 0.6.3.
+License: MIT. Version: 0.6.4.
