@@ -17,6 +17,8 @@ is documented for the next hardware-tested milestone.
 - Wi-Fi station or isolated access-point mode
 - Touch-to-arm temporary WPA2 AP with a fresh 20-character password shown as a QR code
 - One-client captive portal, five-minute join window, 15-minute session and motion revocation
+- Physically activated, ten-minute phone-hotspot OTA maintenance mode
+- Live configurable LCD/browser widget dashboard and OBD-II simulation mode
 - Status, Config, Display, Frames and About web pages
 - Live WebSocket telemetry, LCD preview, searchable CAN frame ring buffer and
   standard OBD-II PID decoding
@@ -47,6 +49,10 @@ credentials. This ignored file enables direct LAN access and shows the assigned
 IP plus `http://kia-hud.local` on the LCD. It deliberately bypasses physical
 presence authentication and must not be included in production builds.
 
+Configure a maintenance hotspot at `/ota-config`, then press **OTA update** on
+the stationary HUD. The display shows its temporary ArduinoOTA address and
+random upload password. See [docs/BUILDING.md](docs/BUILDING.md#ota-maintenance).
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
@@ -56,4 +62,4 @@ presence authentication and must not be included in production builds.
 - [Safety and vehicle discovery](docs/SAFETY.md)
 - [Roadmap and recommendations](docs/ROADMAP.md)
 
-License: MIT. Version: 0.3.0.
+License: MIT. Version: 0.4.0.

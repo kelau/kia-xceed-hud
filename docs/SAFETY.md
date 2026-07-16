@@ -15,3 +15,8 @@ Mount below the driver's sight line without blocking airbags or controls. Use a
 glanceable high-contrast layout, automatic night dimming and a startup disclaimer.
 GPS and frame logs are personal data; logging should be opt-in with retention and
 one-touch deletion.
+
+Never start an OTA update while driving or on an unstable supply. The firmware
+refuses OTA at 1 km/h or above and expires maintenance mode after ten minutes,
+but the operator must still confirm that the vehicle is parked and adequately
+powered. A failed update may require recovery over USB.
