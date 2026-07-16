@@ -15,6 +15,7 @@ the displayed Wi-Fi QR code; the captive portal's first client claims the sessio
 | GET | `/api/isotp` | Reassembled buffered ISO-TP multi-frame payloads |
 | GET | `/api/diagnostics` | Buffered DTC and freeze-frame responses |
 | GET | `/api/export.csv` | Download captured frames and decodes as CSV |
+| POST | `/api/ota-start` | Start the stationary-only OTA maintenance window |
 | POST | `/api/logout` | Revoke the current device session |
 
 Protected calls must originate from the claimed client IP during the 15-minute

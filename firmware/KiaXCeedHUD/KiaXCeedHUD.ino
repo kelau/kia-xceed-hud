@@ -24,13 +24,13 @@ using namespace hud;
 Config cfg; VehicleBus bus; Telemetry telemetry; TemporaryAccess accessGate;
 AsyncWebServer server(80); DNSServer dns; DisplayPort display; Dashboard dashboard;
 std::array<CanFrame,256> frames; size_t frameHead=0, frameCount=0;
-lv_obj_t *accessLabel,*armButton,*otaButton,*qrCanvas;
+lv_obj_t *accessLabel,*armButton,*qrCanvas;
 lv_color_t* qrPixels=nullptr; String apSsid,apPassword;
 volatile bool stopWebRequested=false;
 bool mdnsStarted=false;
 bool displayStarted=false;
 bool otaConnecting=false,otaStarted=false;uint32_t otaDeadline=0;String otaUploadPassword;
-volatile bool dashboardRebuildRequested=false;
+volatile bool dashboardRebuildRequested=false,otaStartRequested=false;
 static void initWifi();
 
 static bool fromTestLan(AsyncWebServerRequest*r){return test_mode::enabled&&WiFi.status()==WL_CONNECTED&&r->client()->localIP()==WiFi.localIP();}
@@ -51,7 +51,6 @@ static void initDisplay(){
   lv_obj_set_style_bg_color(lv_scr_act(),lv_color_hex(0x071018),0);dashboard.begin(cfg);
   armButton=lv_btn_create(lv_scr_act());lv_obj_set_size(armButton,210,65);lv_obj_align(armButton,LV_ALIGN_BOTTOM_MID,0,-30);lv_obj_add_event_cb(armButton,armWeb,LV_EVENT_CLICKED,nullptr);auto l=lv_label_create(armButton);lv_label_set_text(l,"Web access");lv_obj_center(l);
   if(test_mode::enabled)lv_obj_add_flag(armButton,LV_OBJ_FLAG_HIDDEN);
-  otaButton=lv_btn_create(lv_scr_act());lv_obj_set_size(otaButton,150,55);lv_obj_align(otaButton,LV_ALIGN_BOTTOM_RIGHT,-10,-10);lv_obj_add_event_cb(otaButton,startOta,LV_EVENT_CLICKED,nullptr);auto otaText=lv_label_create(otaButton);lv_label_set_text(otaText,"OTA update");lv_obj_center(otaText);
   qrCanvas=lv_canvas_create(lv_scr_act());lv_obj_align(qrCanvas,LV_ALIGN_CENTER,0,-5);lv_obj_add_flag(qrCanvas,LV_OBJ_FLAG_HIDDEN);
   accessLabel=lv_label_create(lv_scr_act());lv_obj_set_style_text_align(accessLabel,LV_TEXT_ALIGN_CENTER,0);lv_obj_set_style_text_color(accessLabel,lv_color_hex(0xffcb67),0);lv_obj_align(accessLabel,LV_ALIGN_BOTTOM_MID,0,-105);lv_obj_add_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);
   dashboard.sendToBack();
@@ -70,9 +69,10 @@ static void routes(){
   server.on("/",HTTP_GET,[](AsyncWebServerRequest*r){uint32_t id=clientId(r);if(!fromTestLan(r)&&!accessGate.authorized(millis(),id)&&!accessGate.claim(millis(),id)){r->send(403,"text/plain","Touch Web access on the HUD and scan its QR code.");return;}r->send_P(200,"text/html",WEB_UI);});
   server.on("/analysis.js",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;r->send_P(200,"application/javascript",ANALYSIS_JS);});
   server.on("/generate_204",HTTP_GET,[](AsyncWebServerRequest*r){r->redirect("/");});server.on("/hotspot-detect.html",HTTP_GET,[](AsyncWebServerRequest*r){r->redirect("/");});server.on("/connecttest.txt",HTTP_GET,[](AsyncWebServerRequest*r){r->redirect("/");});server.on("/ncsi.txt",HTTP_GET,[](AsyncWebServerRequest*r){r->redirect("/");});
-  server.on("/api/status",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;j["version"]="0.6.0";time_t now=time(nullptr);char date[40]="Not synchronized";if(now>1700000000){struct tm local;localtime_r(&now,&local);strftime(date,sizeof(date),"%Y-%m-%d %H:%M:%S %Z",&local);}j["date"]=date;j["uptime"]=millis()/1000;j["heap"]=ESP.getFreeHeap();j["minHeap"]=ESP.getMinFreeHeap();j["psramFree"]=ESP.getFreePsram();j["flashSize"]=ESP.getFlashChipSize();j["cpuMHz"]=ESP.getCpuFreqMHz();j["sdk"]=ESP.getSdkVersion();j["client"]=r->client()->remoteIP().toString();j["ip"]=WiFi.localIP().toString();j["rssi"]=WiFi.RSSI();j["canAge"]=millis()-telemetry.lastCanMs;j["frameCount"]=frameCount;j["simulateObd"]=cfg.simulateObd;j["listenOnly"]=cfg.canListenOnly;j["speed"]=telemetry.speedKph;j["rpm"]=telemetry.rpm;j["soc"]=telemetry.soc;j["coolant"]=telemetry.coolantC;j["load"]=telemetry.engineLoad;j["trip"]=telemetry.tripKm;j["gps"]=telemetry.gpsFix;sendJson(r,j);});
+  server.on("/api/status",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;j["version"]=FIRMWARE_VERSION;time_t now=time(nullptr);char date[40]="Not synchronized";if(now>1700000000){struct tm local;localtime_r(&now,&local);strftime(date,sizeof(date),"%Y-%m-%d %H:%M:%S %Z",&local);}j["date"]=date;j["uptime"]=millis()/1000;j["heap"]=ESP.getFreeHeap();j["minHeap"]=ESP.getMinFreeHeap();j["psramFree"]=ESP.getFreePsram();j["flashSize"]=ESP.getFlashChipSize();j["cpuMHz"]=ESP.getCpuFreqMHz();j["sdk"]=ESP.getSdkVersion();j["client"]=r->client()->remoteIP().toString();j["ip"]=WiFi.localIP().toString();j["rssi"]=WiFi.RSSI();j["canAge"]=millis()-telemetry.lastCanMs;j["frameCount"]=frameCount;j["simulateObd"]=cfg.simulateObd;j["listenOnly"]=cfg.canListenOnly;j["speed"]=telemetry.speedKph;j["rpm"]=telemetry.rpm;j["soc"]=telemetry.soc;j["coolant"]=telemetry.coolantC;j["load"]=telemetry.engineLoad;j["trip"]=telemetry.tripKm;j["gps"]=telemetry.gpsFix;sendJson(r,j);});
   server.on("/ota-config",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;r->send_P(200,"text/html",OTA_CONFIG_UI);});
-  server.on("/ota-config",HTTP_POST,[](AsyncWebServerRequest*r){if(!auth(r))return;if(!r->hasParam("ssid",true)){r->send(400,"text/plain","SSID required");return;}String ssid=r->getParam("ssid",true)->value();String password=r->hasParam("password",true)?r->getParam("password",true)->value():"";if(ssid.length()>32||(!password.isEmpty()&&(password.length()<8||password.length()>63))){r->send(400,"text/plain","Invalid SSID or password length");return;}cfg.otaSsid=ssid;if(password.length())cfg.otaPassword=password;if(!cfg.save()){r->send(500,"text/plain","Save failed");return;}r->send(200,"text/html","<h2>Hotspot saved</h2><p>Press OTA update on the stationary HUD.</p><a href='/'>Back</a>");});
+  server.on("/api/ota-start",HTTP_POST,[](AsyncWebServerRequest*r){if(!auth(r))return;if(otaConnecting||otaStarted){r->send(409,"application/json","{\"error\":\"OTA already active\"}");return;}otaStartRequested=true;r->send(202,"application/json","{\"starting\":true}");});
+  server.on("/ota-config",HTTP_POST,[](AsyncWebServerRequest*r){if(!auth(r))return;if(!r->hasParam("ssid",true)){r->send(400,"text/plain","SSID required");return;}String ssid=r->getParam("ssid",true)->value();String password=r->hasParam("password",true)?r->getParam("password",true)->value():"";if(ssid.length()>32||(!password.isEmpty()&&(password.length()<8||password.length()>63))){r->send(400,"text/plain","Invalid SSID or password length");return;}cfg.otaSsid=ssid;if(password.length())cfg.otaPassword=password;if(!cfg.save()){r->send(500,"text/plain","Save failed");return;}r->send(200,"text/html","<h2>Hotspot saved</h2><p>Return to Configuration and select Start OTA update.</p><a href='/'>Back</a>");});
   server.on("/api/config",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;String s;cfg.toJson(s);r->send(200,"application/json",s);});
   server.on("/api/config",HTTP_PUT,[](AsyncWebServerRequest*r){},nullptr,[](AsyncWebServerRequest*r,uint8_t*d,size_t n,size_t index,size_t total){if(index==0){if(!auth(r))return;r->_tempObject=new String();((String*)r->_tempObject)->reserve(total);}auto body=(String*)r->_tempObject;if(!body)return;body->concat((const char*)d,n);if(index+n<total)return;bool ok=cfg.fromJson(*body)&&cfg.save();delete body;r->_tempObject=nullptr;if(!ok){r->send(400,"application/json","{\"error\":\"invalid config\"}");return;}dashboardRebuildRequested=true;r->send(200,"application/json","{\"saved\":true}");});
   server.on("/api/frames",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;String q=r->hasParam("q")?r->getParam("q")->value():"";JsonDocument j;auto a=j.to<JsonArray>();for(size_t k=0;k<frameCount;k++){auto&f=frames[(frameHead+256-frameCount+k)%256];std::string decoded=obdDescription(f);String decodedText=decoded.c_str();if(!frameMatches(f,q.c_str())&&!decodedText.equalsIgnoreCase(q)&&decodedText.indexOf(q)<0)continue;auto o=a.add<JsonObject>();char id[9],bytes[25]={};snprintf(id,sizeof(id),"%03X",(unsigned)f.id);for(int i=0;i<f.dlc;i++)snprintf(bytes+strlen(bytes),sizeof(bytes)-strlen(bytes),"%02X%s",f.data[i],i+1<f.dlc?" ":"");o["ms"]=f.ms;o["id"]=id;o["data"]=bytes;if(!decoded.empty())o["decode"]=decoded;if(a.size()>=100)break;}sendJson(r,j);});
@@ -81,15 +81,16 @@ static void routes(){
   server.on("/api/logout",HTTP_POST,[](AsyncWebServerRequest*r){if(!auth(r))return;r->send(204);if(!fromTestLan(r))stopWebRequested=true;});server.onNotFound([](AsyncWebServerRequest*r){if(fromTestLan(r)||accessGate.joinable(millis())||accessGate.authorized(millis(),clientId(r)))r->redirect("/");else r->send(404,"text/plain","Web access inactive");});server.begin();
 }
 void setup(){
-  Serial.begin(115200);delay(100);Serial.println("Kia XCeed HUD v0.6.0 booting");
+  Serial.begin(115200);delay(100);Serial.printf("Kia XCeed HUD v%s booting\n",FIRMWARE_VERSION);
   cfg.load();Serial.println("Config loaded");
+  displayStarted=true;initDisplay();Serial.println("Display and touch initialized");
   initWifi();Serial.println("Wi-Fi stack initialized; temporary AP inactive");
   routes();Serial.println("Web service ready; touch Web access to arm");
   Serial.printf("CAN %s\n",bus.begin(cfg.canListenOnly,cfg.canRate)?"initialized":"initialization failed");
 }
 void loop() {
-  if(!displayStarted&&millis()>5000){displayStarted=true;initDisplay();Serial.println("Display and touch initialized");}
   dns.processNextRequest();
+  if(otaStartRequested){otaStartRequested=false;startOta(nullptr);}
   updateOta();
   if(dashboardRebuildRequested){dashboardRebuildRequested=false;dashboard.rebuild(cfg);dashboard.sendToBack();}
   updateTestNetwork();
