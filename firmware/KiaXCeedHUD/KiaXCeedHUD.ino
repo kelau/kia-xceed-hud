@@ -97,7 +97,7 @@ void loop() {
   dns.processNextRequest();
   if(otaStartRequested){otaStartRequested=false;startOta(nullptr);}
   updateOta();
-  if(displayConfigApplied!=displayConfigRequested){xSemaphoreTake(configMutex,portMAX_DELAY);displayCfg=cfg;uint32_t revision=displayConfigRequested;xSemaphoreGive(configMutex);display.clear();dashboard.rebuild(displayCfg);dashboard.update(displayCfg,telemetry,millis());dashboard.sendToBack();lv_obj_invalidate(lv_scr_act());lv_refr_now(nullptr);displayConfigApplied=revision;Serial.printf("Display config revision %u applied\n",(unsigned)revision);}
+  if(displayConfigApplied!=displayConfigRequested){xSemaphoreTake(configMutex,portMAX_DELAY);displayCfg=cfg;uint32_t revision=displayConfigRequested;xSemaphoreGive(configMutex);dashboard.rebuild(displayCfg);dashboard.update(displayCfg,telemetry,millis());dashboard.sendToBack();displayConfigApplied=revision;Serial.printf("Display config revision %u applied\n",(unsigned)revision);}
   updateTestNetwork();
   if(stopWebRequested){stopWebRequested=false;stopWeb();}
   CanFrame f;
