@@ -48,18 +48,18 @@ inline bool validateWidget(const Widget& w) {
   return !w.id.empty()&&w.x>=0&&w.y>=0&&w.w>=40&&w.h>=30&&w.x+w.w<=480&&w.y+w.h<=480;
 }
 
-class PinGate {
+class TemporaryAccess {
  public:
-  static constexpr uint32_t ARM_MS=60000, PIN_MS=120000, SESSION_MS=900000;
-  void arm(uint32_t now, uint32_t pin){armedUntil_=now+ARM_MS;pinUntil_=now+PIN_MS;pin_=(pin>=100000&&pin<=999999)?pin:pin%900000+100000;session_=0;}
-  bool canShowLogin(uint32_t now)const{return before(now,armedUntil_)&&before(now,pinUntil_);}
-  bool login(uint32_t now,uint32_t pin){if(!canShowLogin(now)||pin!=pin_)return false;session_=mix(pin^now^0x9e3779b9);sessionUntil_=now+SESSION_MS;pin_=0;return true;}
-  bool authorized(uint32_t now,uint32_t token)const{return token&&token==session_&&before(now,sessionUntil_);}
-  uint32_t pin()const{return pin_;} uint32_t token()const{return session_;}
-  void revoke(){armedUntil_=pinUntil_=sessionUntil_=pin_=session_=0;}
+  static constexpr uint32_t JOIN_MS=300000, SESSION_MS=900000;
+  void arm(uint32_t now){joinUntil_=now+JOIN_MS;sessionUntil_=0;client_=0;}
+  bool joinable(uint32_t now)const{return client_==0&&before(now,joinUntil_);}
+  bool claim(uint32_t now,uint32_t client){if(!client||!joinable(now))return false;client_=client;sessionUntil_=now+SESSION_MS;joinUntil_=0;return true;}
+  bool authorized(uint32_t now,uint32_t client)const{return client&&client==client_&&before(now,sessionUntil_);}
+  bool active(uint32_t now)const{return joinable(now)||authorized(now,client_);}
+  uint32_t client()const{return client_;}
+  void revoke(){joinUntil_=sessionUntil_=client_=0;}
  private:
   static bool before(uint32_t a,uint32_t b){return (int32_t)(b-a)>0;}
-  static uint32_t mix(uint32_t x){x^=x>>16;x*=0x7feb352d;x^=x>>15;x*=0x846ca68b;x^=x>>16;return x?x:1;}
-  uint32_t armedUntil_=0,pinUntil_=0,sessionUntil_=0,pin_=0,session_=0;
+  uint32_t joinUntil_=0,sessionUntil_=0,client_=0;
 };
 }

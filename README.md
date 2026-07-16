@@ -2,7 +2,7 @@
 
 Open-source driver information display for a 2022 Kia XCeed PHEV, built for the
 Waveshare ESP32-S3-Touch-LCD-4 Rev 3. It combines CAN/OBD-II monitoring, a
-480x480 touch dashboard, and a PIN-gated local web UI. GPS and IMU integration
+480x480 touch dashboard, and a touch-gated temporary-AP web UI. GPS and IMU integration
 is documented for the next hardware-tested milestone.
 
 > **Safety:** This is an experimental accessory, not an automotive instrument.
@@ -15,7 +15,8 @@ is documented for the next hardware-tested milestone.
 - LVGL dashboard with speed, power, battery SOC, RPM, coolant, trip and GPS state
 - Configurable/reorderable widgets persisted in flash
 - Wi-Fi station or isolated access-point mode
-- Touch-to-arm, short-lived PIN authentication; no telemetry is served pre-login
+- Touch-to-arm temporary WPA2 AP with a fresh 20-character password shown as a QR code
+- One-client captive portal, five-minute join window, 15-minute session and motion revocation
 - Status, Config, Display, Frames and About web pages
 - Live WebSocket telemetry, LCD preview, searchable CAN frame ring buffer and
   standard OBD-II PID decoding
@@ -33,8 +34,8 @@ is documented for the next hardware-tested milestone.
 4. Or open the repository in VS Code with PlatformIO and use `pio run`.
 5. Connect CAN-H/CAN-L/GND to a fused OBD-II breakout (pins 6/14/4 or 5).
    Do not connect the separate CAN Pal: this board already has a TJA1051.
-6. Touch **Web access** on the LCD, join `Kia-HUD-Setup`, browse to
-   `http://192.168.4.1`, and enter the PIN shown on the display.
+6. Touch **Web access**, scan the Wi-Fi QR code, and accept the captive portal.
+   The temporary AP shuts down automatically and is revoked above 5 km/h.
 
 Run host tests with `cmake -S test -B build/test && cmake --build build/test &&
 ctest --test-dir build/test --output-on-failure`.
@@ -48,4 +49,4 @@ ctest --test-dir build/test --output-on-failure`.
 - [Safety and vehicle discovery](docs/SAFETY.md)
 - [Roadmap and recommendations](docs/ROADMAP.md)
 
-License: MIT. Version: 0.1.0.
+License: MIT. Version: 0.2.0.

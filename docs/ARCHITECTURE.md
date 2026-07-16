@@ -10,12 +10,15 @@ CAN reception is non-blocking and stored in a 256-frame RAM ring. Only the newes
 exhausting memory. Standard ISO 15765 responses (0x7E8–0x7EF, mode 01) are decoded.
 Kia-specific PHEV signals require capture and validation before inclusion.
 
-Security is presence-based: touch arms HTTP for 60 seconds and displays a random
-six-digit PIN for up to two minutes. Successful login destroys the PIN and issues
-an opaque 15-minute bearer token held only in browser memory. Reboot, logout, or
-timeout revokes access. No status, configuration, frames or UI is returned before
-authorization. This protects against casual local access, not a determined
-attacker with Wi-Fi/CAN proximity; TLS is impractical without provisioning.
+Security is presence-based. A physical touch creates a temporary WPA2 AP with a
+random SSID suffix and a fresh 20-character password held only in RAM. A standard
+Wi-Fi QR code avoids typing the high-entropy credential. The AP permits one station
+and a captive portal binds the first HTTP client IP for 15 minutes; joining must
+occur within five minutes. Logout, timeout, reboot, or vehicle speed at or above
+5 km/h destroys the credential and stops the AP. No valuable route is available
+before the client is claimed. Plain HTTP still does not defend against an attacker
+who obtains the QR credential and actively intercepts local traffic; authenticated
+TLS would require device certificate provisioning and browser trust enrollment.
 
 The web preview uses the same 480x480 coordinate model as the LCD. Layout values
 are range checked in firmware. A production evolution should render both targets
