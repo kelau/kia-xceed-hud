@@ -18,6 +18,7 @@ class DisplayPort {
     lv_indev_drv_init(&input_);input_.type=LV_INDEV_TYPE_POINTER;input_.read_cb=readTouch;lv_indev_drv_register(&input_);return true;
   }
   void update(){lv_timer_handler();}
+  void clear(){if(gfx_)gfx_->fillScreen(0x0000);}
  private:
   static void flush(lv_disp_drv_t*d,const lv_area_t*a,lv_color_t*c){uint32_t w=a->x2-a->x1+1,h=a->y2-a->y1+1;instance_->gfx_->draw16bitRGBBitmap(a->x1,a->y1,(uint16_t*)&c->full,w,h);lv_disp_flush_ready(d);}
   static void readTouch(lv_indev_drv_t*,lv_indev_data_t*d){int16_t x[1],y[1];if(instance_->touch_.getPoint(x,y,1)){d->state=LV_INDEV_STATE_PR;d->point.x=479-x[0];d->point.y=479-y[0];}else d->state=LV_INDEV_STATE_REL;}
