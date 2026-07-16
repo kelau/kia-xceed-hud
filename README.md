@@ -49,4 +49,4 @@ ctest --test-dir build/test --output-on-failure`.
 - [Safety and vehicle discovery](docs/SAFETY.md)
 - [Roadmap and recommendations](docs/ROADMAP.md)
 
-License: MIT. Version: 0.2.0.
+License: MIT. Version: 0.2.1.
