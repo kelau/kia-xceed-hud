@@ -17,7 +17,7 @@ class Dashboard {
       lv_obj_set_pos(card,w.x,w.y);lv_obj_set_size(card,w.w,w.h);lv_obj_set_style_bg_color(card,lv_color_hex(w.background),0);
       lv_obj_set_style_border_color(card,lv_color_hex(0x2dd4bf),0);lv_obj_set_style_radius(card,10,0);lv_obj_clear_flag(card,LV_OBJ_FLAG_SCROLLABLE);
       auto title=lv_label_create(card);lv_label_set_text(title,w.title[0]?w.title:w.id.c_str());lv_obj_set_style_text_color(title,lv_color_hex(w.textColor),0);lv_obj_align(title,LV_ALIGN_TOP_LEFT,0,0);
-      auto value=lv_label_create(card);values_[i]=value;lv_obj_set_style_text_color(value,lv_color_hex(w.textColor),0);lv_obj_set_style_transform_zoom(value,constrain((int)w.fontSize*256/14,180,660),0);lv_obj_align(value,LV_ALIGN_CENTER,0,8);
+      auto value=lv_label_create(card);values_[i]=value;lv_obj_set_style_text_color(value,lv_color_hex(w.textColor),0);lv_obj_align(value,LV_ALIGN_CENTER,0,8);
     }
   }
   void update(const Config& c,const Telemetry&t,uint32_t now){
