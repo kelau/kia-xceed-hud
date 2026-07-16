@@ -40,6 +40,13 @@ is documented for the next hardware-tested milestone.
 Run host tests with `cmake -S test -B build/test && cmake --build build/test &&
 ctest --test-dir build/test --output-on-failure`.
 
+## Development LAN mode
+
+Copy `TestModeSecrets.example.h` to `TestModeSecrets.h` and enter local Wi-Fi
+credentials. This ignored file enables direct LAN access and shows the assigned
+IP plus `http://kia-hud.local` on the LCD. It deliberately bypasses physical
+presence authentication and must not be included in production builds.
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
@@ -49,4 +56,4 @@ ctest --test-dir build/test --output-on-failure`.
 - [Safety and vehicle discovery](docs/SAFETY.md)
 - [Roadmap and recommendations](docs/ROADMAP.md)
 
-License: MIT. Version: 0.2.1.
+License: MIT. Version: 0.3.0.

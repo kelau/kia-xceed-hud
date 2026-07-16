@@ -7,4 +7,5 @@ work/
 *.elf
 *.map
 *.obj
+firmware/KiaXCeedHUD/src/TestModeSecrets.h
 .DS_Store
