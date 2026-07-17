@@ -19,10 +19,12 @@
 #include "src/Dashboard.h"
 #include "src/ObdSimulator.h"
 #include "src/AnalysisUi.h"
+#include "src/Splash.h"
 
 using namespace hud;
 Config cfg,displayCfg; VehicleBus bus; Telemetry telemetry; TemporaryAccess accessGate;
 AsyncWebServer server(80); DNSServer dns; DisplayPort display; Dashboard dashboard;
+SplashScreen splash;
 std::array<CanFrame,256> frames; size_t frameHead=0, frameCount=0;
 lv_obj_t *accessLabel,*armButton,*qrCanvas;
 lv_color_t* qrPixels=nullptr; String apSsid,apPassword;
@@ -56,7 +58,7 @@ static void initDisplay(){
   if(test_mode::enabled)lv_obj_add_flag(armButton,LV_OBJ_FLAG_HIDDEN);
   qrCanvas=lv_canvas_create(lv_scr_act());lv_obj_align(qrCanvas,LV_ALIGN_CENTER,0,-5);lv_obj_add_flag(qrCanvas,LV_OBJ_FLAG_HIDDEN);
   accessLabel=lv_label_create(lv_scr_act());lv_obj_set_style_text_align(accessLabel,LV_TEXT_ALIGN_CENTER,0);lv_obj_set_style_text_color(accessLabel,lv_color_hex(0xffcb67),0);lv_obj_align(accessLabel,LV_ALIGN_BOTTOM_MID,0,-105);lv_obj_add_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);
-  dashboard.sendToBack();display.setBrightness(cfg.brightness);
+  dashboard.sendToBack();display.setBrightness(cfg.brightness);splash.show(millis());
 }
 static void initWifi(){WiFi.mode(WIFI_STA);WiFi.setHostname(test_mode::enabled?test_mode::mdnsName:cfg.hostname.c_str());setenv("TZ","CET-1CEST,M3.5.0,M10.5.0/3",1);tzset();configTime(0,0,"pool.ntp.org","time.cloudflare.com");if(test_mode::enabled)WiFi.begin(test_mode::ssid,test_mode::password);else if(cfg.ssid.length())WiFi.begin(cfg.ssid,cfg.password);else WiFi.disconnect(false,false);}
 static void updateTestNetwork(){if(!displayStarted||!accessLabel||otaConnecting||otaStarted||!test_mode::enabled||WiFi.status()!=WL_CONNECTED)return;if(!mdnsStarted){mdnsStarted=MDNS.begin(test_mode::mdnsName);if(mdnsStarted)MDNS.addService("http","tcp",80);}static IPAddress shown;if(shown!=WiFi.localIP()||lv_obj_has_flag(accessLabel,LV_OBJ_FLAG_HIDDEN)){shown=WiFi.localIP();lv_label_set_text_fmt(accessLabel,"TEST MODE - LAN access\nhttp://%s.local\nhttp://%s",test_mode::mdnsName,shown.toString().c_str());lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);}}
@@ -122,4 +124,5 @@ void loop() {
     dashboard.update(displayCfg,telemetry,millis());
   }
   if(displayStarted)display.update(); delay(2);
+  splash.update(millis());
 }
