@@ -20,6 +20,7 @@ int main(){
   auto fuelTrim=findPid(0x06);uint8_t neutralTrim[]={128};assert(fuelTrim&&decodePidValue(*fuelTrim,neutralTrim,1,value)&&value==0);
   assert(validateWidget({"speed",0,0,100,60,true}));assert(!validateWidget({"bad",450,0,100,60,true}));
   float widgetMin,widgetMax;assert(widgetRange("speed",widgetMin,widgetMax)&&widgetMin==0&&widgetMax==240);assert(widgetRange("coolant",widgetMin,widgetMax)&&widgetMin==-40&&widgetMax==215);assert(!widgetRange("date",widgetMin,widgetMax));
+  Widget styled{"rpm",0,0,100,60,true};styled.visualMin=500;styled.visualMax=7000;styled.lightLow=2500;styled.lightHigh=4500;assert(widgetVisualRange(styled,widgetMin,widgetMax)&&widgetMin==500&&widgetMax==7000);float lightLow,lightHigh;widgetLightLimits(styled,widgetMin,widgetMax,lightLow,lightHigh);assert(lightLow==2500&&lightHigh==4500);styled.visualMin=styled.visualMax=styled.lightLow=styled.lightHigh=0;assert(widgetVisualRange(styled,widgetMin,widgetMax)&&widgetMax==8000);widgetLightLimits(styled,widgetMin,widgetMax,lightLow,lightHigh);assert(lightLow>2666&&lightLow<2667&&lightHigh>5333&&lightHigh<5334);
   TemporaryAccess g;g.arm(1000);assert(g.joinable(1001));assert(!g.claim(1002,0));assert(g.claim(1002,0x01020304));assert(g.authorized(1003,0x01020304));assert(!g.authorized(1003,0x05060708));assert(!g.authorized(1002+TemporaryAccess::SESSION_MS,0x01020304));g.revoke();assert(!g.active(1004));
   TemporaryAccess wrap;wrap.arm(0xfffffff0u);assert(wrap.joinable(5));
   std::cout<<"All core tests passed\n";
