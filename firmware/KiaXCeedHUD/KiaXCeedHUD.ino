@@ -20,11 +20,13 @@
 #include "src/ObdSimulator.h"
 #include "src/AnalysisUi.h"
 #include "src/Splash.h"
+#include "src/Performance.h"
 
 using namespace hud;
 Config cfg,displayCfg; VehicleBus bus; Telemetry telemetry; TemporaryAccess accessGate;
 AsyncWebServer server(80); DNSServer dns; DisplayPort display; Dashboard dashboard;
 SplashScreen splash;
+PerformanceMonitor* performance=nullptr;
 std::array<CanFrame,256> frames; size_t frameHead=0, frameCount=0;
 uint32_t frameTotal=0,qrShownAt=0;
 lv_obj_t *accessLabel,*armButton,*qrCanvas,*qrBackdrop;
@@ -42,8 +44,8 @@ static bool vehicleMoving(){return !cfg.simulateObd&&max(telemetry.speedKph,tele
 
 static bool fromTestLan(AsyncWebServerRequest*r){return test_mode::enabled&&WiFi.status()==WL_CONNECTED&&r->client()->localIP()==WiFi.localIP();}
 static uint32_t clientId(AsyncWebServerRequest*r){if(r->client()->localIP()!=WiFi.softAPIP())return 0;return (uint32_t)r->client()->remoteIP();}
-static bool auth(AsyncWebServerRequest*r){if(fromTestLan(r)||accessGate.authorized(millis(),clientId(r)))return true;r->send(401,"application/json","{\"error\":\"unauthorized\"}");return false;}
-static void sendJson(AsyncWebServerRequest*r,JsonDocument&d){String s;serializeJson(d,s);r->send(200,"application/json",s);}
+static bool auth(AsyncWebServerRequest*r){performance->webBegin(r);if(fromTestLan(r)||accessGate.authorized(millis(),clientId(r)))return true;r->send(401,"application/json","{\"error\":\"unauthorized\"}");performance->webEnd(r);return false;}
+static void sendJson(AsyncWebServerRequest*r,JsonDocument&d){String s;serializeJson(d,s);r->send(200,"application/json",s);performance->webEnd(r);}
 
 static String randomSecret(size_t length){static const char alphabet[]="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";String s;s.reserve(length);for(size_t i=0;i<length;i++)s+=alphabet[esp_random()%(sizeof(alphabet)-1)];return s;}
 static void startOta(lv_event_t*){if(!cfg.otaSsid.length()||!cfg.otaPassword.length()){lv_label_set_text(accessLabel,"Configure hotspot credentials in the web UI first");lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);return;}if(vehicleMoving()){lv_label_set_text(accessLabel,"OTA refused while vehicle is moving");lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);return;}otaUploadPassword=randomSecret(20);otaDeadline=millis()+600000;otaConnecting=true;otaStarted=false;MDNS.end();mdnsStarted=false;WiFi.mode(WIFI_STA);WiFi.begin(cfg.otaSsid,cfg.otaPassword);lv_label_set_text_fmt(accessLabel,"OTA: connecting to %s...",cfg.otaSsid.c_str());lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);}
@@ -67,6 +69,7 @@ static void initDisplay(){
 static void initWifi(){WiFi.mode(WIFI_STA);WiFi.setHostname(test_mode::enabled?test_mode::mdnsName:cfg.hostname.c_str());setenv("TZ","CET-1CEST,M3.5.0,M10.5.0/3",1);tzset();configTime(0,0,"pool.ntp.org","time.cloudflare.com");if(test_mode::enabled)WiFi.begin(test_mode::ssid,test_mode::password);else if(cfg.ssid.length())WiFi.begin(cfg.ssid,cfg.password);else WiFi.disconnect(false,false);}
 static void updateTestNetwork(){if(!displayStarted||!accessLabel||otaConnecting||otaStarted||!test_mode::enabled||WiFi.status()!=WL_CONNECTED)return;if(!mdnsStarted){mdnsStarted=MDNS.begin(test_mode::mdnsName);if(mdnsStarted)MDNS.addService("http","tcp",80);}static IPAddress shown;if(shown!=WiFi.localIP()||lv_obj_has_flag(accessLabel,LV_OBJ_FLAG_HIDDEN)){shown=WiFi.localIP();lv_label_set_text_fmt(accessLabel,"TEST MODE - LAN access\nhttp://%s.local\nhttp://%s",test_mode::mdnsName,shown.toString().c_str());lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);}}
 static void analysisRoutes(){
+  server.on("/api/performance",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;performance->toJson(j);sendJson(r,j);});
   server.on("/api/screenshot.rgb565",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;auto response=r->beginResponse("application/octet-stream",DisplayPort::SCREENSHOT_BYTES,[](uint8_t*buffer,size_t maximum,size_t index){return display.readScreenshot(buffer,maximum,index);});response->addHeader("X-Framebuffer-Width","480");response->addHeader("X-Framebuffer-Height","480");response->addHeader("X-Pixel-Format","RGB565-LE");response->addHeader("Cache-Control","no-store");r->send(response);});
   server.on("/api/can-status",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;j["frameTotal"]=frameTotal;j["ageMs"]=millis()-telemetry.lastCanMs;j["targetFps"]=cfg.simulateObd?SIMULATED_CAN_FPS:0;sendJson(r,j);});
   server.on("/api/pids",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;auto a=j.to<JsonArray>();for(const auto&d:SAE_PIDS){auto o=a.add<JsonObject>();char pid[3];snprintf(pid,sizeof(pid),"%02X",d.pid);o["pid"]=pid;o["name"]=d.name;o["unit"]=d.unit;o["min"]=d.minimum;o["max"]=d.maximum;o["bytes"]=d.bytes;bool seen=false,supported=false;for(size_t n=0;n<frameCount;n++){auto&f=frames[(frameHead+256-frameCount+n)%256];if(f.id<0x7E8||f.id>0x7EF||f.dlc<4||f.data[1]!=0x41)continue;if(f.data[2]==d.pid)seen=true;if((f.data[2]%0x20)==0&&f.dlc>=7&&d.pid>f.data[2]&&d.pid<=f.data[2]+32){uint8_t bit=d.pid-f.data[2]-1;supported|=(f.data[3+bit/8]&(0x80>>(bit%8)))!=0;}}o["seen"]=seen;o["supported"]=supported;}sendJson(r,j);});
@@ -93,15 +96,17 @@ static void routes(){
   server.on("/api/logout",HTTP_POST,[](AsyncWebServerRequest*r){if(!auth(r))return;r->send(204);if(!fromTestLan(r))stopWebRequested=true;});server.onNotFound([](AsyncWebServerRequest*r){if(fromTestLan(r)||accessGate.joinable(millis())||accessGate.authorized(millis(),clientId(r)))r->redirect("/");else r->send(404,"text/plain","Web access inactive");});server.begin();
 }
 void setup(){
-  Serial.begin(115200);delay(100);Serial.printf("Kia XCeed HUD v%s booting\n",FIRMWARE_VERSION);
+  Serial.begin(115200);delay(100);performance=new PerformanceMonitor();Serial.printf("Kia XCeed HUD v%s booting\n",FIRMWARE_VERSION);
   configMutex=xSemaphoreCreateMutex();
   cfg.load();displayCfg=cfg;Serial.println("Config loaded");
   displayStarted=true;initDisplay();displayConfigApplied=displayConfigRequested;Serial.println("Display and touch initialized");
   initWifi();Serial.println("Wi-Fi stack initialized; temporary AP inactive");
   routes();Serial.println("Web service ready; touch Web access to arm");
   Serial.printf("CAN %s\n",bus.begin(cfg.canListenOnly,cfg.canRate)?"initialized":"initialization failed");
+  performance->begin();Serial.println("Performance monitor initialized");
 }
 void loop() {
+  uint32_t loopStarted=micros();
   dns.processNextRequest();
   if(otaStartRequested){otaStartRequested=false;startOta(nullptr);}
   updateOta();
@@ -109,15 +114,16 @@ void loop() {
   if(displayConfigApplied!=displayConfigRequested){xSemaphoreTake(configMutex,portMAX_DELAY);displayCfg=cfg;uint32_t revision=displayConfigRequested;xSemaphoreGive(configMutex);dashboard.rebuild(displayCfg);dashboard.update(displayCfg,telemetry,millis());dashboard.sendToBack();display.setBrightness(displayCfg.brightness);displayConfigApplied=revision;Serial.printf("Display config revision %u applied (brightness %u%%)\n",(unsigned)revision,(unsigned)displayCfg.brightness);}
   updateTestNetwork();
   if(stopWebRequested){stopWebRequested=false;stopWeb();}
-  CanFrame f;
+  uint32_t canStarted=micros();CanFrame f;
   while(bus.receive(f)) {
     if(cfg.simulateObd)continue;
-    frames[frameHead]=f; frameHead=(frameHead+1)%frames.size();
+    if(frameCount==frames.size())performance->noteCanCoalesced();frames[frameHead]=f; frameHead=(frameHead+1)%frames.size();
     frameCount=min(frameCount+1,frames.size());frameTotal++;telemetry.lastCanMs=f.ms;
     decodeObd(f,telemetry);
   }
   static uint32_t nextSimUs=0,simSequence=0;
-  if(cfg.simulateObd){uint32_t nowUs=micros();if(!nextSimUs)nextSimUs=nowUs;uint8_t emitted=0;while((int32_t)(nowUs-nextSimUs)>=0&&emitted<SIMULATED_CAN_MAX_CATCH_UP){f=simulatedFrame(millis(),simSequence++);frames[frameHead]=f;frameHead=(frameHead+1)%frames.size();frameCount=min(frameCount+1,frames.size());frameTotal++;telemetry.lastCanMs=f.ms;decodeObd(f,telemetry);nextSimUs+=SIMULATED_CAN_PERIOD_US;emitted++;}if((int32_t)(nowUs-nextSimUs)>100000)nextSimUs=nowUs;}else nextSimUs=0;
+  if(cfg.simulateObd){uint32_t nowUs=micros();if(!nextSimUs)nextSimUs=nowUs;uint8_t emitted=0;while((int32_t)(nowUs-nextSimUs)>=0&&emitted<SIMULATED_CAN_MAX_CATCH_UP){f=simulatedFrame(millis(),simSequence++);if(frameCount==frames.size())performance->noteCanCoalesced();frames[frameHead]=f;frameHead=(frameHead+1)%frames.size();frameCount=min(frameCount+1,frames.size());frameTotal++;telemetry.lastCanMs=f.ms;decodeObd(f,telemetry);nextSimUs+=SIMULATED_CAN_PERIOD_US;emitted++;}if((int32_t)(nowUs-nextSimUs)>100000){performance->noteCanDropped((nowUs-nextSimUs)/SIMULATED_CAN_PERIOD_US);nextSimUs=nowUs;}}else nextSimUs=0;
+  performance->recordCan(micros()-canStarted);
   static uint32_t lastPid=0; static uint8_t pidIndex=0;
   if(!cfg.simulateObd&&!cfg.canListenOnly && millis()-lastPid>=250) {
     static const uint8_t safePids[]={0x00,0x20,0x40,0x60,0x80,0xA0,0x0D,0x0C,0x05,0x04,0x2F,0x0F,0x10,0x11,0x1F,0x42,0x46,0x5C,0x5E};
@@ -130,6 +136,7 @@ void loop() {
     last=millis();
     dashboard.update(displayCfg,telemetry,millis());
   }
-  if(displayStarted)display.update(); delay(2);
+  if(displayStarted){uint32_t lcdStarted=micros();performance->noteDisplayService(lcdStarted);display.update();performance->recordLcd(micros()-lcdStarted);} delay(2);
   splash.update(millis());
+  performance->recordLoop(micros()-loopStarted);performance->tick(millis());
 }
