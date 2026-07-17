@@ -26,6 +26,7 @@ Config cfg,displayCfg; VehicleBus bus; Telemetry telemetry; TemporaryAccess acce
 AsyncWebServer server(80); DNSServer dns; DisplayPort display; Dashboard dashboard;
 SplashScreen splash;
 std::array<CanFrame,256> frames; size_t frameHead=0, frameCount=0;
+uint32_t frameTotal=0,qrShownAt=0;
 lv_obj_t *accessLabel,*armButton,*qrCanvas;
 lv_color_t* qrPixels=nullptr; String apSsid,apPassword;
 volatile bool stopWebRequested=false;
@@ -50,20 +51,22 @@ static void stopOta(const char* reason){if(otaStarted)ArduinoOTA.end();otaStarte
 static void updateOta(){if(!otaConnecting&&!otaStarted)return;if(vehicleMoving()){stopOta("OTA cancelled: vehicle moving");return;}if((int32_t)(millis()-otaDeadline)>=0){stopOta("OTA window expired");return;}if(otaConnecting&&WiFi.status()==WL_CONNECTED){ArduinoOTA.setHostname("kia-hud-ota");ArduinoOTA.setPassword(otaUploadPassword.c_str());ArduinoOTA.onStart([](){lv_label_set_text(accessLabel,"OTA update started - do not remove power");});ArduinoOTA.onProgress([](unsigned int done,unsigned int total){lv_label_set_text_fmt(accessLabel,"OTA updating: %u%%",total?done*100/total:0);});ArduinoOTA.onEnd([](){lv_label_set_text(accessLabel,"OTA complete - rebooting");});ArduinoOTA.onError([](ota_error_t error){lv_label_set_text_fmt(accessLabel,"OTA error %u",error);});ArduinoOTA.begin();otaConnecting=false;otaStarted=true;lv_label_set_text_fmt(accessLabel,"OTA READY (10 minutes)\nHost: kia-hud-ota.local\nIP: %s\nPassword: %s",WiFi.localIP().toString().c_str(),otaUploadPassword.c_str());}if(otaStarted)ArduinoOTA.handle();}
 static void renderQr(esp_qrcode_handle_t qr){const int scale=4,quiet=4,size=esp_qrcode_get_size(qr),side=(size+quiet*2)*scale;if(!qrPixels)qrPixels=(lv_color_t*)heap_caps_malloc(180*180*sizeof(lv_color_t),MALLOC_CAP_SPIRAM);lv_canvas_set_buffer(qrCanvas,qrPixels,180,180,LV_IMG_CF_TRUE_COLOR);lv_canvas_fill_bg(qrCanvas,lv_color_white(),LV_OPA_COVER);for(int y=0;y<size;y++)for(int x=0;x<size;x++)if(esp_qrcode_get_module(qr,x,y))for(int py=0;py<scale;py++)for(int px=0;px<scale;px++)lv_canvas_set_px_color(qrCanvas,(x+quiet)*scale+px,(y+quiet)*scale+py,lv_color_black());lv_obj_set_size(qrCanvas,side,side);lv_obj_clear_flag(qrCanvas,LV_OBJ_FLAG_HIDDEN);}
 static void showQr(const String& text){esp_qrcode_config_t q={renderQr,5,ESP_QRCODE_ECC_LOW};esp_qrcode_generate(&q,text.c_str());}
-static void stopWeb(){dns.stop();WiFi.softAPdisconnect(true);accessGate.revoke();apPassword="";apSsid="";lv_obj_add_flag(qrCanvas,LV_OBJ_FLAG_HIDDEN);lv_obj_add_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);WiFi.mode(WIFI_STA);if(test_mode::enabled)WiFi.begin(test_mode::ssid,test_mode::password);else if(!cfg.ssid.length())WiFi.disconnect(false,false);}
-static void armWeb(lv_event_t*){stopWeb();accessGate.arm(millis());apSsid="Kia-HUD-"+randomSecret(4);apPassword=randomSecret(20);WiFi.mode(cfg.ssid.length()?WIFI_AP_STA:WIFI_AP);WiFi.softAP(apSsid.c_str(),apPassword.c_str(),1,0,1);dns.start(53,"*",WiFi.softAPIP());showQr("WIFI:T:WPA;S:"+apSsid+";P:"+apPassword+";;");lv_label_set_text_fmt(accessLabel,"Scan to join %s\nOne client - expires in 5 minutes",apSsid.c_str());lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);lv_obj_move_foreground(qrCanvas);lv_obj_move_foreground(accessLabel);}
+static void hideQr(lv_event_t*){qrShownAt=0;lv_obj_add_flag(qrCanvas,LV_OBJ_FLAG_HIDDEN);lv_obj_add_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);}
+static void stopWeb(){dns.stop();WiFi.softAPdisconnect(true);accessGate.revoke();apPassword="";apSsid="";hideQr(nullptr);WiFi.mode(WIFI_STA);if(test_mode::enabled)WiFi.begin(test_mode::ssid,test_mode::password);else if(!cfg.ssid.length())WiFi.disconnect(false,false);}
+static void armWeb(lv_event_t*){stopWeb();accessGate.arm(millis());apSsid="Kia-HUD-"+randomSecret(4);apPassword=randomSecret(20);WiFi.mode(cfg.ssid.length()?WIFI_AP_STA:WIFI_AP);WiFi.softAP(apSsid.c_str(),apPassword.c_str(),1,0,1);dns.start(53,"*",WiFi.softAPIP());showQr("WIFI:T:WPA;S:"+apSsid+";P:"+apPassword+";;");qrShownAt=millis();lv_label_set_text_fmt(accessLabel,"Scan to join %s\nQR hides in 60 seconds",apSsid.c_str());lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);lv_obj_move_foreground(qrCanvas);lv_obj_move_foreground(accessLabel);}
 static void initDisplay(){
   if(!display.begin()){Serial.println("Display/touch initialization failed");return;}
   lv_obj_set_style_bg_color(lv_scr_act(),lv_color_hex(0x071018),0);dashboard.setWebAccessCallback(armWeb);dashboard.begin(cfg);
   armButton=lv_btn_create(lv_scr_act());lv_obj_set_size(armButton,210,65);lv_obj_align(armButton,LV_ALIGN_BOTTOM_MID,0,-30);lv_obj_add_event_cb(armButton,armWeb,LV_EVENT_CLICKED,nullptr);auto l=lv_label_create(armButton);lv_label_set_text(l,"Web access");lv_obj_center(l);
   if(test_mode::enabled)lv_obj_add_flag(armButton,LV_OBJ_FLAG_HIDDEN);
-  qrCanvas=lv_canvas_create(lv_scr_act());lv_obj_align(qrCanvas,LV_ALIGN_CENTER,0,-5);lv_obj_add_flag(qrCanvas,LV_OBJ_FLAG_HIDDEN);
+  qrCanvas=lv_canvas_create(lv_scr_act());lv_obj_align(qrCanvas,LV_ALIGN_CENTER,0,-5);lv_obj_add_flag(qrCanvas,LV_OBJ_FLAG_HIDDEN|LV_OBJ_FLAG_CLICKABLE);lv_obj_add_event_cb(qrCanvas,hideQr,LV_EVENT_CLICKED,nullptr);
   accessLabel=lv_label_create(lv_scr_act());lv_obj_set_style_text_align(accessLabel,LV_TEXT_ALIGN_CENTER,0);lv_obj_set_style_text_color(accessLabel,lv_color_hex(0xffcb67),0);lv_obj_align(accessLabel,LV_ALIGN_BOTTOM_MID,0,-105);lv_obj_add_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);
   dashboard.sendToBack();display.setBrightness(cfg.brightness);splash.show(millis());
 }
 static void initWifi(){WiFi.mode(WIFI_STA);WiFi.setHostname(test_mode::enabled?test_mode::mdnsName:cfg.hostname.c_str());setenv("TZ","CET-1CEST,M3.5.0,M10.5.0/3",1);tzset();configTime(0,0,"pool.ntp.org","time.cloudflare.com");if(test_mode::enabled)WiFi.begin(test_mode::ssid,test_mode::password);else if(cfg.ssid.length())WiFi.begin(cfg.ssid,cfg.password);else WiFi.disconnect(false,false);}
 static void updateTestNetwork(){if(!displayStarted||!accessLabel||otaConnecting||otaStarted||!test_mode::enabled||WiFi.status()!=WL_CONNECTED)return;if(!mdnsStarted){mdnsStarted=MDNS.begin(test_mode::mdnsName);if(mdnsStarted)MDNS.addService("http","tcp",80);}static IPAddress shown;if(shown!=WiFi.localIP()||lv_obj_has_flag(accessLabel,LV_OBJ_FLAG_HIDDEN)){shown=WiFi.localIP();lv_label_set_text_fmt(accessLabel,"TEST MODE - LAN access\nhttp://%s.local\nhttp://%s",test_mode::mdnsName,shown.toString().c_str());lv_obj_clear_flag(accessLabel,LV_OBJ_FLAG_HIDDEN);}}
 static void analysisRoutes(){
+  server.on("/api/can-status",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;j["frameTotal"]=frameTotal;j["ageMs"]=millis()-telemetry.lastCanMs;sendJson(r,j);});
   server.on("/api/pids",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;auto a=j.to<JsonArray>();for(const auto&d:SAE_PIDS){auto o=a.add<JsonObject>();char pid[3];snprintf(pid,sizeof(pid),"%02X",d.pid);o["pid"]=pid;o["name"]=d.name;o["unit"]=d.unit;o["min"]=d.minimum;o["max"]=d.maximum;o["bytes"]=d.bytes;bool seen=false,supported=false;for(size_t n=0;n<frameCount;n++){auto&f=frames[(frameHead+256-frameCount+n)%256];if(f.id<0x7E8||f.id>0x7EF||f.dlc<4||f.data[1]!=0x41)continue;if(f.data[2]==d.pid)seen=true;if((f.data[2]%0x20)==0&&f.dlc>=7&&d.pid>f.data[2]&&d.pid<=f.data[2]+32){uint8_t bit=d.pid-f.data[2]-1;supported|=(f.data[3+bit/8]&(0x80>>(bit%8)))!=0;}}o["seen"]=seen;o["supported"]=supported;}sendJson(r,j);});
   server.on("/api/ecus",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;auto a=j.to<JsonArray>();for(uint32_t id=0x7E8;id<=0x7EF;id++){uint32_t count=0,last=0;bool pids[256]={};for(size_t n=0;n<frameCount;n++){auto&f=frames[(frameHead+256-frameCount+n)%256];if(f.id!=id)continue;count++;last=f.ms;if(f.dlc>=3&&f.data[1]==0x41)pids[f.data[2]]=true;}if(!count)continue;auto o=a.add<JsonObject>();char name[8];snprintf(name,sizeof(name),"ECU %03X",(unsigned)id);o["id"]=id;o["name"]=name;o["frames"]=count;o["lastMs"]=last;auto pa=o["pids"].to<JsonArray>();for(int p=0;p<256;p++)if(pids[p])pa.add(p);}sendJson(r,j);});
   server.on("/api/isotp",HTTP_GET,[](AsyncWebServerRequest*r){if(!auth(r))return;JsonDocument j;auto a=j.to<JsonArray>();uint8_t payload[256];for(size_t n=0;n<frameCount;n++){auto&f=frames[(frameHead+256-frameCount+n)%256];if(f.dlc<2||(f.data[0]>>4)!=1)continue;uint16_t total=((f.data[0]&15)<<8)|f.data[1],used=0;for(int i=2;i<f.dlc&&used<total;i++)payload[used++]=f.data[i];uint8_t seq=1;for(size_t m=n+1;m<frameCount&&used<total;m++){auto&c=frames[(frameHead+256-frameCount+m)%256];if(c.id!=f.id||c.dlc<2||(c.data[0]>>4)!=2||(c.data[0]&15)!=(seq&15))continue;for(int i=1;i<c.dlc&&used<total;i++)payload[used++]=c.data[i];seq++;}auto o=a.add<JsonObject>();char id[9],raw[513]={};snprintf(id,sizeof(id),"%03X",(unsigned)f.id);for(int i=0;i<used;i++)snprintf(raw+strlen(raw),sizeof(raw)-strlen(raw),"%02X",payload[i]);o["id"]=id;o["expected"]=total;o["received"]=used;o["complete"]=used==total;o["payload"]=raw;}sendJson(r,j);});
@@ -100,6 +103,7 @@ void loop() {
   dns.processNextRequest();
   if(otaStartRequested){otaStartRequested=false;startOta(nullptr);}
   updateOta();
+  if(qrShownAt&&millis()-qrShownAt>=60000)hideQr(nullptr);
   if(displayConfigApplied!=displayConfigRequested){xSemaphoreTake(configMutex,portMAX_DELAY);displayCfg=cfg;uint32_t revision=displayConfigRequested;xSemaphoreGive(configMutex);dashboard.rebuild(displayCfg);dashboard.update(displayCfg,telemetry,millis());dashboard.sendToBack();display.setBrightness(displayCfg.brightness);displayConfigApplied=revision;Serial.printf("Display config revision %u applied (brightness %u%%)\n",(unsigned)revision,(unsigned)displayCfg.brightness);}
   updateTestNetwork();
   if(stopWebRequested){stopWebRequested=false;stopWeb();}
@@ -107,11 +111,11 @@ void loop() {
   while(bus.receive(f)) {
     if(cfg.simulateObd)continue;
     frames[frameHead]=f; frameHead=(frameHead+1)%frames.size();
-    frameCount=min(frameCount+1,frames.size()); telemetry.lastCanMs=f.ms;
+    frameCount=min(frameCount+1,frames.size());frameTotal++;telemetry.lastCanMs=f.ms;
     decodeObd(f,telemetry);
   }
   static uint32_t lastSim=0;static uint8_t simSequence=0;
-  if(cfg.simulateObd&&millis()-lastSim>=100){lastSim=millis();f=simulatedFrame(lastSim,simSequence++);frames[frameHead]=f;frameHead=(frameHead+1)%frames.size();frameCount=min(frameCount+1,frames.size());telemetry.lastCanMs=f.ms;decodeObd(f,telemetry);}
+  if(cfg.simulateObd&&millis()-lastSim>=100){lastSim=millis();f=simulatedFrame(lastSim,simSequence++);frames[frameHead]=f;frameHead=(frameHead+1)%frames.size();frameCount=min(frameCount+1,frames.size());frameTotal++;telemetry.lastCanMs=f.ms;decodeObd(f,telemetry);}
   static uint32_t lastPid=0; static uint8_t pidIndex=0;
   if(!cfg.simulateObd&&!cfg.canListenOnly && millis()-lastPid>=250) {
     static const uint8_t safePids[]={0x00,0x20,0x40,0x60,0x80,0xA0,0x0D,0x0C,0x05,0x04,0x2F,0x0F,0x10,0x11,0x1F,0x42,0x46,0x5C,0x5E};
