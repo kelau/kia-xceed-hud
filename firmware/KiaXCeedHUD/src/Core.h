@@ -6,7 +6,7 @@
 #include "StandardPids.h"
 
 namespace hud {
-inline constexpr const char* FIRMWARE_VERSION="0.12.1";
+inline constexpr const char* FIRMWARE_VERSION="0.12.2";
 struct CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
 struct Telemetry {
   float speedKph=0, rpm=0, coolantC=0, soc=0, engineLoad=0;
@@ -21,7 +21,7 @@ inline const char* widgetDefaultTitle(const std::string&id){if(id=="speed")retur
 inline uint8_t widgetDefaultDecimals(const std::string&id){if(id=="soc"||id=="trip"||id=="load"||id=="gpsSpeed"||id=="throttle"||id=="voltage"||id=="fuelRate")return 1;if(id=="accel")return 2;if(id=="coordinates")return 5;return 0;}
 inline bool widgetRange(const std::string&id,float&minimum,float&maximum){if(id=="speed"||id=="gpsSpeed"){minimum=0;maximum=240;}else if(id=="rpm"||id=="power"){minimum=0;maximum=8000;}else if(id=="soc"||id=="load"||id=="throttle"){minimum=0;maximum=100;}else if(id=="coolant"){minimum=-40;maximum=215;}else if(id=="intakeTemp"||id=="ambientTemp"){minimum=-40;maximum=120;}else if(id=="voltage"){minimum=0;maximum=20;}else if(id=="fuelRate"){minimum=0;maximum=50;}else if(id=="wifiSignal"){minimum=-100;maximum=-30;}else if(id=="canAge"){minimum=0;maximum=5000;}else return false;return true;}
 inline bool widgetVisualRange(const Widget&w,float&minimum,float&maximum){if(w.visualMax>w.visualMin){minimum=w.visualMin;maximum=w.visualMax;return true;}return widgetRange(w.id,minimum,maximum);}
-inline void widgetLightLimits(const Widget&w,float minimum,float maximum,float&low,float&high){if(w.lightHigh>w.lightLow){low=w.lightLow;high=w.lightHigh;}else{low=minimum+(maximum-minimum)/3.0f;high=minimum+2.0f*(maximum-minimum)/3.0f;}}
+inline void widgetLightLimits(const Widget&w,float minimum,float maximum,float&low,float&high){if(w.lightHigh>=w.lightLow&&(w.lightLow!=0||w.lightHigh!=0)){low=w.lightLow;high=w.lightHigh;}else{low=minimum+(maximum-minimum)/3.0f;high=minimum+2.0f*(maximum-minimum)/3.0f;}}
 
 inline int hexNibble(char c) { return c>='0'&&c<='9'?c-'0':c>='a'&&c<='f'?c-'a'+10:c>='A'&&c<='F'?c-'A'+10:-1; }
 inline bool frameMatches(const CanFrame& f, const std::string& query) {
