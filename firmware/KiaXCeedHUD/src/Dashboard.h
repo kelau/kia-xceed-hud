@@ -6,6 +6,7 @@
 namespace hud {
 class Dashboard {
  public:
+  void setWebAccessCallback(lv_event_cb_t callback){webAccessCallback_=callback;}
   void begin(const Config& c){root_=createRoot();populate(root_,c);}
   void rebuild(const Config& c){
     auto oldCards=cards_;auto oldTitles=titles_;auto oldValues=values_;auto oldIds=ids_;cards_.fill(nullptr);titles_.fill(nullptr);values_.fill(nullptr);for(auto&id:ids_)id.clear();
@@ -29,13 +30,17 @@ class Dashboard {
       else if(id=="status")v=String(t.gpsFix?"GPS fix | ":"GPS -- | ")+String(now-t.lastCanMs)+"ms";
       else if(id=="version")v=FIRMWARE_VERSION;else if(id=="gpsLock")v=t.gpsFix?"LOCKED":"NO FIX";
       else if(id=="uptime")v=String(now/1000)+" s";else if(id=="wifi")v=WiFi.status()==WL_CONNECTED?WiFi.localIP().toString():"offline";
+      else if(id=="intakeTemp")v=String(t.intakeTempC,(unsigned int)decimals)+" C";else if(id=="throttle")v=String(t.throttlePct,(unsigned int)decimals)+" %";
+      else if(id=="voltage")v=String(t.controlVoltage,(unsigned int)decimals)+" V";else if(id=="ambientTemp")v=String(t.ambientTempC,(unsigned int)decimals)+" C";
+      else if(id=="fuelRate")v=String(t.fuelRateLph,(unsigned int)decimals)+" L/h";else if(id=="wifiSignal")v=WiFi.status()==WL_CONNECTED?String(WiFi.RSSI())+" dBm":"offline";
+      else if(id=="mode")v=c.simulateObd?"SIMULATION":c.canListenOnly?"CAN LISTEN":"OBD POLLING";else if(id=="webAccess")v="Tap to connect";
       else if(id=="time"||id=="date"){time_t epoch=time(nullptr);if(epoch>1700000000){struct tm local;localtime_r(&epoch,&local);char text[24];const char*formats[]={"%H:%M:%S","%H:%M","%I:%M:%S %p","%I:%M %p"};strftime(text,sizeof(text),id=="time"?formats[min((uint8_t)3,w.timeFormat)]:"%Y-%m-%d",&local);v=text;}else v="--";}else v="--";
       lv_label_set_text(values_[i],v.c_str());
     }
   }
   void sendToBack(){if(root_)lv_obj_move_background(root_);}
  private:
-  void configure(size_t i,const Widget&w){auto card=cards_[i];lv_obj_set_pos(card,w.x,w.y);lv_obj_set_size(card,w.w,w.h);lv_obj_set_style_bg_color(card,lv_color_hex(w.background),0);lv_obj_set_style_bg_opa(card,w.backgroundOpacity,0);lv_obj_set_style_border_color(card,lv_color_hex(0x2dd4bf),0);lv_obj_set_style_border_width(card,w.border?2:0,0);lv_obj_set_style_radius(card,10,0);lv_obj_clear_flag(card,LV_OBJ_FLAG_SCROLLABLE);auto title=titles_[i];lv_label_set_text(title,w.title[0]?w.title:widgetDefaultTitle(w.id));lv_obj_set_style_text_color(title,lv_color_hex(w.textColor),0);lv_obj_align(title,LV_ALIGN_TOP_LEFT,0,0);auto value=values_[i];lv_obj_set_style_text_color(value,lv_color_hex(w.textColor),0);lv_obj_set_style_text_font(value,&lv_font_montserrat_14,0);lv_obj_align(value,w.valueAlign==0?LV_ALIGN_LEFT_MID:w.valueAlign==2?LV_ALIGN_RIGHT_MID:LV_ALIGN_CENTER,0,8);lv_obj_move_foreground(card);}
+  void configure(size_t i,const Widget&w){auto card=cards_[i];lv_obj_set_pos(card,w.x,w.y);lv_obj_set_size(card,w.w,w.h);lv_obj_set_style_bg_color(card,lv_color_hex(w.background),0);lv_obj_set_style_bg_opa(card,w.backgroundOpacity,0);lv_obj_set_style_border_color(card,lv_color_hex(0x2dd4bf),0);lv_obj_set_style_border_width(card,w.border?2:0,0);lv_obj_set_style_radius(card,10,0);lv_obj_clear_flag(card,LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_CLICKABLE);if(webAccessCallback_)lv_obj_remove_event_cb(card,webAccessCallback_);if(w.id=="webAccess"&&webAccessCallback_){lv_obj_add_flag(card,LV_OBJ_FLAG_CLICKABLE);lv_obj_add_event_cb(card,webAccessCallback_,LV_EVENT_CLICKED,nullptr);}auto title=titles_[i];lv_label_set_text(title,w.title[0]?w.title:widgetDefaultTitle(w.id));lv_obj_set_style_text_color(title,lv_color_hex(w.textColor),0);lv_obj_align(title,LV_ALIGN_TOP_LEFT,0,0);auto value=values_[i];lv_obj_set_style_text_color(value,lv_color_hex(w.textColor),0);lv_obj_set_style_text_font(value,&lv_font_montserrat_14,0);lv_obj_align(value,w.valueAlign==0?LV_ALIGN_LEFT_MID:w.valueAlign==2?LV_ALIGN_RIGHT_MID:LV_ALIGN_CENTER,0,8);lv_obj_move_foreground(card);}
   static lv_obj_t* createRoot(){auto root=lv_obj_create(lv_scr_act());lv_obj_set_size(root,480,480);lv_obj_set_pos(root,0,0);lv_obj_set_style_bg_color(root,lv_color_hex(0x071018),0);lv_obj_set_style_border_width(root,0,0);lv_obj_set_style_pad_all(root,0,0);lv_obj_clear_flag(root,LV_OBJ_FLAG_SCROLLABLE);return root;}
-  lv_obj_t*root_=nullptr;std::array<lv_obj_t*,18>cards_{};std::array<lv_obj_t*,18>titles_{};std::array<lv_obj_t*,18>values_{};std::array<std::string,18>ids_{};
+  lv_obj_t*root_=nullptr;std::array<lv_obj_t*,26>cards_{};std::array<lv_obj_t*,26>titles_{};std::array<lv_obj_t*,26>values_{};std::array<std::string,26>ids_{};lv_event_cb_t webAccessCallback_=nullptr;
 };}

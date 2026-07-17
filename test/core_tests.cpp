@@ -12,6 +12,11 @@ int main(){
   assert(frameMatches(speed,"7e8"));assert(frameMatches(speed,"41 0D"));assert(!frameMatches(speed,"7DF"));
   assert(frameTypeKey(temp)=="7E8:05");float value,realMin,realMax;const char*unit;assert(frameMetric(temp,value,realMin,realMax,unit));assert(value==60&&realMin==-40&&realMax==215&&std::string(unit)=="C");
   CanFrame volts{0x7E8,5,{4,0x41,0x42,0x30,0x39},200};assert(frameMetric(volts,value,realMin,realMax,unit));assert(value>12.34f&&value<12.36f&&std::string(unit)=="V");
+  assert(decodeObd(volts,t)&&t.controlVoltage>12.34f&&t.controlVoltage<12.36f);
+  CanFrame throttle{0x7E8,4,{3,0x41,0x11,128},210};assert(decodeObd(throttle,t)&&t.throttlePct>50.1f&&t.throttlePct<50.3f);
+  CanFrame intake{0x7E8,4,{3,0x41,0x0F,70},220};assert(decodeObd(intake,t)&&t.intakeTempC==30);
+  CanFrame ambient{0x7E8,4,{3,0x41,0x46,65},230};assert(decodeObd(ambient,t)&&t.ambientTempC==25);
+  CanFrame fuelRate{0x7E8,5,{4,0x41,0x5E,0,100},240};assert(decodeObd(fuelRate,t)&&t.fuelRateLph==5);
   auto fuelTrim=findPid(0x06);uint8_t neutralTrim[]={128};assert(fuelTrim&&decodePidValue(*fuelTrim,neutralTrim,1,value)&&value==0);
   assert(validateWidget({"speed",0,0,100,60,true}));assert(!validateWidget({"bad",450,0,100,60,true}));
   TemporaryAccess g;g.arm(1000);assert(g.joinable(1001));assert(!g.claim(1002,0));assert(g.claim(1002,0x01020304));assert(g.authorized(1003,0x01020304));assert(!g.authorized(1003,0x05060708));assert(!g.authorized(1002+TemporaryAccess::SESSION_MS,0x01020304));g.revoke();assert(!g.active(1004));

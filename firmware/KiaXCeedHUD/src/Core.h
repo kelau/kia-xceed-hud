@@ -6,17 +6,18 @@
 #include "StandardPids.h"
 
 namespace hud {
-inline constexpr const char* FIRMWARE_VERSION="0.7.2";
+inline constexpr const char* FIRMWARE_VERSION="0.8.0";
 struct CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
 struct Telemetry {
   float speedKph=0, rpm=0, coolantC=0, soc=0, engineLoad=0;
+  float intakeTempC=0, throttlePct=0, controlVoltage=0, ambientTempC=0, fuelRateLph=0;
   float gpsSpeedKph=0, latitude=0, longitude=0, tripKm=0;
   float accelLong=0, accelLat=0; bool gpsFix=false; uint32_t lastCanMs=0;
 };
 struct Widget { std::string id; int16_t x=0,y=0,w=100,h=70; bool visible=true; char title[32]{}; uint8_t fontSize=18; uint32_t background=0x102a38,textColor=0xffffff; uint8_t backgroundOpacity=255; bool border=true; uint8_t decimals=255,valueAlign=1,timeFormat=0; };
 
-inline const char* widgetDefaultTitle(const std::string&id){if(id=="speed")return "Vehicle speed";if(id=="soc")return "Level / SOC";if(id=="power")return "Power / RPM";if(id=="trip")return "Trip distance";if(id=="coolant")return "Coolant";if(id=="status")return "System status";if(id=="rpm")return "Engine RPM";if(id=="load")return "Engine load";if(id=="gpsSpeed")return "GPS speed";if(id=="accel")return "Acceleration";if(id=="canAge")return "CAN age";if(id=="coordinates")return "Coordinates";if(id=="version")return "Firmware version";if(id=="time")return "Time";if(id=="date")return "Date";if(id=="gpsLock")return "GPS lock";if(id=="uptime")return "System uptime";if(id=="wifi")return "Wi-Fi address";return id.c_str();}
-inline uint8_t widgetDefaultDecimals(const std::string&id){if(id=="soc"||id=="trip"||id=="load"||id=="gpsSpeed")return 1;if(id=="accel")return 2;if(id=="coordinates")return 5;return 0;}
+inline const char* widgetDefaultTitle(const std::string&id){if(id=="speed")return "Vehicle speed";if(id=="soc")return "Level / SOC";if(id=="power")return "Power / RPM";if(id=="trip")return "Trip distance";if(id=="coolant")return "Coolant";if(id=="status")return "System status";if(id=="rpm")return "Engine RPM";if(id=="load")return "Engine load";if(id=="gpsSpeed")return "GPS speed";if(id=="accel")return "Acceleration";if(id=="canAge")return "CAN age";if(id=="coordinates")return "Coordinates";if(id=="version")return "Firmware version";if(id=="time")return "Time";if(id=="date")return "Date";if(id=="gpsLock")return "GPS lock";if(id=="uptime")return "System uptime";if(id=="wifi")return "Wi-Fi address";if(id=="intakeTemp")return "Intake temperature";if(id=="throttle")return "Throttle position";if(id=="voltage")return "Control voltage";if(id=="ambientTemp")return "Ambient temperature";if(id=="fuelRate")return "Fuel rate";if(id=="wifiSignal")return "Wi-Fi signal";if(id=="mode")return "Data source";if(id=="webAccess")return "Web access";return id.c_str();}
+inline uint8_t widgetDefaultDecimals(const std::string&id){if(id=="soc"||id=="trip"||id=="load"||id=="gpsSpeed"||id=="throttle"||id=="voltage"||id=="fuelRate")return 1;if(id=="accel")return 2;if(id=="coordinates")return 5;return 0;}
 
 inline int hexNibble(char c) { return c>='0'&&c<='9'?c-'0':c>='a'&&c<='f'?c-'a'+10:c>='A'&&c<='F'?c-'A'+10:-1; }
 inline bool frameMatches(const CanFrame& f, const std::string& query) {
@@ -34,7 +35,12 @@ inline bool decodeObd(const CanFrame& f, Telemetry& t) {
     case 0x05: t.coolantC=(float)f.data[3]-40; return true;
     case 0x0C: if(f.dlc<5)return false; t.rpm=((f.data[3]<<8)|f.data[4])/4.0f; return true;
     case 0x0D: t.speedKph=f.data[3]; return true;
+    case 0x0F: t.intakeTempC=(float)f.data[3]-40; return true;
+    case 0x11: t.throttlePct=f.data[3]*100.0f/255.0f; return true;
     case 0x2F: t.soc=f.data[3]*100.0f/255.0f; return true;
+    case 0x42: if(f.dlc<5)return false; t.controlVoltage=((f.data[3]<<8)|f.data[4])/1000.0f; return true;
+    case 0x46: t.ambientTempC=(float)f.data[3]-40; return true;
+    case 0x5E: if(f.dlc<5)return false; t.fuelRateLph=((f.data[3]<<8)|f.data[4])/20.0f; return true;
     default: return false;
   }
 }
