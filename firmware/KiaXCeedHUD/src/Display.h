@@ -18,7 +18,7 @@ class DisplayPort {
     lv_disp_drv_init(&disp_);disp_.hor_res=480;disp_.ver_res=480;disp_.flush_cb=flush;disp_.draw_buf=&draw_;lv_disp_drv_register(&disp_);
     lv_indev_drv_init(&input_);input_.type=LV_INDEV_TYPE_POINTER;input_.read_cb=readTouch;lv_indev_drv_register(&input_);return true;
   }
-  void update(){lv_timer_handler();}
+  void update(){uint32_t now=millis(),elapsed=now-lastTickMs_;if(elapsed){lv_tick_inc(elapsed);lastTickMs_=now;}lv_timer_handler();}
   void setBrightness(uint8_t percent){
     percent=constrain(percent,5,100);
     if(!dimmer_){
@@ -40,7 +40,7 @@ class DisplayPort {
   Arduino_DataBus* bus_=new Arduino_SWSPI(GFX_NOT_DEFINED,42,2,1,GFX_NOT_DEFINED);
   Arduino_ESP32RGBPanel* rgb_=new Arduino_ESP32RGBPanel(40,39,38,41,46,3,8,18,17,14,13,12,11,10,9,5,45,48,47,21,1,10,8,50,1,10,8,20,0,8000000,false,0,0,0);
   Arduino_RGB_Display* gfx_=new Arduino_RGB_Display(480,480,rgb_,2,true,bus_,GFX_NOT_DEFINED,st7701_type1_init_operations,sizeof(st7701_type1_init_operations));
-  TouchDrvGT911 touch_;lv_disp_draw_buf_t draw_;lv_disp_drv_t disp_;lv_indev_drv_t input_;lv_color_t *buf1_=nullptr;uint16_t*frame_=nullptr;lv_obj_t*dimmer_=nullptr;static DisplayPort* instance_;
+  TouchDrvGT911 touch_;lv_disp_draw_buf_t draw_;lv_disp_drv_t disp_;lv_indev_drv_t input_;lv_color_t *buf1_=nullptr;uint16_t*frame_=nullptr;lv_obj_t*dimmer_=nullptr;uint32_t lastTickMs_=0;static DisplayPort* instance_;
 };
 inline DisplayPort* DisplayPort::instance_=nullptr;
 }

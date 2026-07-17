@@ -62,6 +62,6 @@ random upload password. See [docs/BUILDING.md](docs/BUILDING.md#ota-maintenance)
 - [Safety and vehicle discovery](docs/SAFETY.md)
 - [Roadmap and recommendations](docs/ROADMAP.md)
 
-License: MIT. Version: 0.13.0.
+License: MIT. Version: 0.13.1.
 
 Runtime performance is available on the Status page and from `GET /api/performance`. It reports per-core current, rolling-average and peak utilization from the FreeRTOS idle-task runtime counters; loop, LCD, CAN and web-handler durations; missed 20 ms display deadlines; and dropped or coalesced CAN-frame totals.
