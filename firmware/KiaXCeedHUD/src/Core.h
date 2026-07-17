@@ -6,7 +6,7 @@
 #include "StandardPids.h"
 
 namespace hud {
-inline constexpr const char* FIRMWARE_VERSION="0.7.1";
+inline constexpr const char* FIRMWARE_VERSION="0.7.2";
 struct CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
 struct Telemetry {
   float speedKph=0, rpm=0, coolantC=0, soc=0, engineLoad=0;

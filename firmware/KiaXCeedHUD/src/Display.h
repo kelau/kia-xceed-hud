@@ -18,6 +18,19 @@ class DisplayPort {
     lv_indev_drv_init(&input_);input_.type=LV_INDEV_TYPE_POINTER;input_.read_cb=readTouch;lv_indev_drv_register(&input_);return true;
   }
   void update(){lv_timer_handler();}
+  void setBrightness(uint8_t percent){
+    percent=constrain(percent,5,100);
+    if(!dimmer_){
+      dimmer_=lv_obj_create(lv_scr_act());
+      lv_obj_set_pos(dimmer_,0,0);lv_obj_set_size(dimmer_,480,480);
+      lv_obj_set_style_bg_color(dimmer_,lv_color_black(),0);
+      lv_obj_set_style_border_width(dimmer_,0,0);lv_obj_set_style_radius(dimmer_,0,0);
+      lv_obj_set_style_pad_all(dimmer_,0,0);
+      lv_obj_clear_flag(dimmer_,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+    }
+    lv_obj_set_style_bg_opa(dimmer_,(lv_opa_t)((100-percent)*255/100),0);
+    lv_obj_move_foreground(dimmer_);
+  }
   void clear(){if(gfx_)gfx_->fillScreen(0x0000);}
  private:
   static void flush(lv_disp_drv_t*d,const lv_area_t*a,lv_color_t*c){uint32_t w=a->x2-a->x1+1,h=a->y2-a->y1+1;instance_->gfx_->draw16bitRGBBitmap(a->x1,a->y1,(uint16_t*)&c->full,w,h);lv_disp_flush_ready(d);}
@@ -25,7 +38,7 @@ class DisplayPort {
   Arduino_DataBus* bus_=new Arduino_SWSPI(GFX_NOT_DEFINED,42,2,1,GFX_NOT_DEFINED);
   Arduino_ESP32RGBPanel* rgb_=new Arduino_ESP32RGBPanel(40,39,38,41,46,3,8,18,17,14,13,12,11,10,9,5,45,48,47,21,1,10,8,50,1,10,8,20,0,8000000,false,0,0,0);
   Arduino_RGB_Display* gfx_=new Arduino_RGB_Display(480,480,rgb_,2,true,bus_,GFX_NOT_DEFINED,st7701_type1_init_operations,sizeof(st7701_type1_init_operations));
-  TouchDrvGT911 touch_;lv_disp_draw_buf_t draw_;lv_disp_drv_t disp_;lv_indev_drv_t input_;lv_color_t *buf1_=nullptr;static DisplayPort* instance_;
+  TouchDrvGT911 touch_;lv_disp_draw_buf_t draw_;lv_disp_drv_t disp_;lv_indev_drv_t input_;lv_color_t *buf1_=nullptr;lv_obj_t*dimmer_=nullptr;static DisplayPort* instance_;
 };
 inline DisplayPort* DisplayPort::instance_=nullptr;
 }
