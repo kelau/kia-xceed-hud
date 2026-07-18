@@ -6,7 +6,7 @@
 #include "StandardPids.h"
 
 namespace hud {
-inline constexpr const char* FIRMWARE_VERSION="0.15.0";
+inline constexpr const char* FIRMWARE_VERSION="0.15.1";
 inline constexpr uint16_t CONFIG_SCHEMA_VERSION=3;
 struct CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
 struct Telemetry {
@@ -19,6 +19,7 @@ enum WidgetVisualStyle:uint8_t { WIDGET_VALUE=0,WIDGET_BAR=1,WIDGET_GAUGE=2,WIDG
 struct Widget { std::string id; int16_t x=0,y=0,w=100,h=70; bool visible=false; char title[32]{}; uint16_t fontSize=18; uint8_t fontFamily=0; uint32_t background=0x102a38,textColor=0xffffff; uint8_t backgroundOpacity=255; bool border=true; uint8_t decimals=255,valueAlign=1,timeFormat=0,visualStyle=WIDGET_VALUE; float visualMin=0,visualMax=0,lightLow=0,lightHigh=0; uint32_t trackColor=0x1f3b4d,accentColor=0x2dd4bf,lowColor=0xef4444,midColor=0xf59e0b,highColor=0x22c55e; uint8_t visualThickness=8,subdivisions=0; char resource[64]{}; bool beepEnabled=false; uint8_t beepWhen=0; float beepThreshold=0; uint32_t beepTimeoutMs=5000; bool showUnit=true; };
 enum DisplayCondition:uint8_t { CONDITION_NONE=0,CONDITION_BOOT=1,CONDITION_GT=2,CONDITION_GTE=3,CONDITION_LT=4,CONDITION_LTE=5,CONDITION_EQ=6,CONDITION_BATTERY=7 };
 struct VirtualDisplay { char id[20]{},name[32]{},metric[20]{}; DisplayCondition condition=CONDITION_NONE; float threshold=0; uint32_t timeoutMs=0; bool enabled=false,returnPrevious=true; std::array<Widget,40> widgets{}; };
+struct DisplayState { bool simulateObd=false,canListenOnly=true;uint8_t brightness=80;std::array<Widget,40> widgets{}; };
 
 inline const char* widgetDefaultTitle(const std::string&id){if(id=="icon")return "Icon / graphic";if(id=="battery")return "Battery";if(id=="speed")return "Vehicle speed";if(id=="soc")return "Level / SOC";if(id=="power")return "Power / RPM";if(id=="trip")return "Trip distance";if(id=="coolant")return "Coolant";if(id=="status")return "System status";if(id=="rpm")return "Engine RPM";if(id=="load")return "Engine load";if(id=="gpsSpeed")return "GPS speed";if(id=="accel")return "Acceleration";if(id=="canAge")return "CAN age";if(id=="coordinates")return "Coordinates";if(id=="version")return "Firmware version";if(id=="time")return "Time";if(id=="date")return "Date";if(id=="gpsLock")return "GPS lock";if(id=="uptime")return "System uptime";if(id=="wifi")return "Wi-Fi address";if(id=="intakeTemp")return "Intake temperature";if(id=="throttle")return "Throttle position";if(id=="voltage")return "Control voltage";if(id=="ambientTemp")return "Ambient temperature";if(id=="fuelRate")return "Fuel rate";if(id=="wifiSignal")return "Wi-Fi signal";if(id=="mode")return "Data source";if(id=="webAccess")return "Web access";return id.c_str();}
 inline uint8_t widgetDefaultDecimals(const std::string&id){if(id=="soc"||id=="trip"||id=="load"||id=="gpsSpeed"||id=="throttle"||id=="voltage"||id=="fuelRate")return 1;if(id=="accel")return 2;if(id=="coordinates")return 5;return 0;}

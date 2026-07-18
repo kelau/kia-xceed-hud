@@ -11,7 +11,7 @@ class BoardServices {
     if(expanderPresent_){expanderConfig_&=~(1u<<5);expanderOutput_&=~(1u<<5);writeRegister(TCA9554,1,expanderOutput_);writeRegister(TCA9554,3,expanderConfig_);}
     Wire.beginTransmission(SW6106);batteryPresent_=Wire.endTransmission()==0;
     if(batteryPresent_)writeRegister(SW6106,0x38,0x0A);
-    SD_MMC.setPins(2,1,4);sdMounted_=SD_MMC.begin("/sdcard",true,false,20000,5);if(sdMounted_){SD_MMC.mkdir("/hud");SD_MMC.mkdir("/hud/fonts");SD_MMC.mkdir("/hud/icons");writeReadme();}
+    SD_MMC.setPins(2,1,4);sdMounted_=SD_MMC.begin("/sdcard",true);if(sdMounted_){SD_MMC.mkdir("/hud");SD_MMC.mkdir("/hud/fonts");SD_MMC.mkdir("/hud/icons");writeReadme();}
     return expanderPresent_||batteryPresent_||sdMounted_;
   }
   void update(uint32_t now){
