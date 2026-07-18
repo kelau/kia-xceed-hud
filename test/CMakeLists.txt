@@ -17,3 +17,4 @@ add_test(NAME web_app_syntax COMMAND ${NODE_EXECUTABLE} --check ${CMAKE_CURRENT_
 add_test(NAME web_runtime_syntax COMMAND ${NODE_EXECUTABLE} --check ${CMAKE_CURRENT_SOURCE_DIR}/../firmware/KiaXCeedHUD/web/runtime.js)
 add_test(NAME web_analysis_syntax COMMAND ${NODE_EXECUTABLE} --check ${CMAKE_CURRENT_SOURCE_DIR}/../firmware/KiaXCeedHUD/web/analysis.js)
 add_test(NAME web_features_syntax COMMAND ${NODE_EXECUTABLE} --check ${CMAKE_CURRENT_SOURCE_DIR}/../firmware/KiaXCeedHUD/web/features.js)
+add_test(NAME web_widget_catalog COMMAND ${NODE_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/web_catalog_tests.js)
