@@ -22,4 +22,6 @@ TLS would require device certificate provisioning and browser trust enrollment.
 
 The web preview uses the same 480x480 coordinate model as the LCD. Layout values
 are range checked in firmware. A production evolution should render both targets
-from a shared widget registry and use binary WebSockets for higher frame rates.
+from a shared widget registry. Server-Sent Events notify the browser of live CAN,
+metric, performance, and configuration changes; the browser then fetches the
+corresponding authenticated API resource.

@@ -5,6 +5,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python tools/generate_web_assets.py --check
+      - run: node --check firmware/KiaXCeedHUD/web/app.js
+      - run: node --check firmware/KiaXCeedHUD/web/runtime.js
+      - run: node --check firmware/KiaXCeedHUD/web/analysis.js
+      - run: node --check firmware/KiaXCeedHUD/web/features.js
       - run: cmake -S test -B build/test
       - run: cmake --build build/test
       - run: ctest --test-dir build/test --output-on-failure

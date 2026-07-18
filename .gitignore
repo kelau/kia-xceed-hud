@@ -2,6 +2,7 @@
 .vscode/.browse.c_cpp.db*
 .vscode/ipch/
 build/
+build-*/
 work/
 *.bin
 *.elf
