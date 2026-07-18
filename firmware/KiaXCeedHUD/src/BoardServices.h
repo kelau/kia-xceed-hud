@@ -11,7 +11,10 @@ class BoardServices {
     if(expanderPresent_){expanderConfig_&=~(1u<<5);expanderOutput_&=~(1u<<5);writeRegister(TCA9554,1,expanderOutput_);writeRegister(TCA9554,3,expanderConfig_);}
     Wire.beginTransmission(SW6106);batteryPresent_=Wire.endTransmission()==0;
     if(batteryPresent_)writeRegister(SW6106,0x38,0x0A);
-    SD_MMC.setPins(2,1,4);sdMounted_=SD_MMC.begin("/sdcard",true);if(sdMounted_){SD_MMC.mkdir("/hud");SD_MMC.mkdir("/hud/fonts");SD_MMC.mkdir("/hud/icons");writeReadme();}
+    strlcpy(sdStage_,"pins-configured",sizeof(sdStage_));SD_MMC.setPins(2,1,4);
+    sdAttempts_=1;sdFrequencyKhz_=20000;strlcpy(sdStage_,"mount-default",sizeof(sdStage_));sdMounted_=SD_MMC.begin("/sdcard",true);
+    if(!sdMounted_){SD_MMC.end();delay(50);sdAttempts_++;sdFrequencyKhz_=10000;strlcpy(sdStage_,"mount-10mhz",sizeof(sdStage_));sdMounted_=SD_MMC.begin("/sdcard",true,false,10000,5);}
+    if(sdMounted_){sdCardType_=SD_MMC.cardType();sdCardSize_=SD_MMC.cardSize();strlcpy(sdStage_,"mounted",sizeof(sdStage_));SD_MMC.mkdir("/hud");SD_MMC.mkdir("/hud/fonts");SD_MMC.mkdir("/hud/icons");writeReadme();File probe=SD_MMC.open("/hud/.write-test","w");if(probe){probe.print("ok");probe.close();sdWritable_=SD_MMC.remove("/hud/.write-test");}if(!sdWritable_)strlcpy(sdStage_,"mounted-read-only",sizeof(sdStage_));}else{sdCardType_=CARD_NONE;sdCardSize_=0;strlcpy(sdStage_,"mount-failed",sizeof(sdStage_));}
     return expanderPresent_||batteryPresent_||sdMounted_;
   }
   void update(uint32_t now){
@@ -19,13 +22,13 @@ class BoardServices {
     if(batteryPresent_&&now-lastBatteryRead_>=1000){lastBatteryRead_=now;readRegister(SW6106,0xB0,batteryStatus_);}
   }
   void beep(uint32_t durationMs){if(!expanderPresent_)return;setBuzzer(true);beepUntil_=millis()+constrain(durationMs,50u,10000u);}
-  bool sdMounted()const{return sdMounted_;}bool batteryPresent()const{return batteryPresent_;}uint8_t batteryStatus()const{return batteryStatus_;}bool buzzerPresent()const{return expanderPresent_;}
+  bool sdMounted()const{return sdMounted_;}bool sdWritable()const{return sdWritable_;}uint8_t sdAttempts()const{return sdAttempts_;}uint8_t sdCardType()const{return sdCardType_;}uint32_t sdFrequencyKhz()const{return sdFrequencyKhz_;}uint64_t sdCardSize()const{return sdCardSize_;}const char*sdStage()const{return sdStage_;}bool batteryPresent()const{return batteryPresent_;}uint8_t batteryStatus()const{return batteryStatus_;}bool buzzerPresent()const{return expanderPresent_;}
  private:
   static constexpr uint8_t TCA9554=0x20,SW6106=0x3C;
   bool readRegister(uint8_t device,uint8_t reg,uint8_t&value){Wire.beginTransmission(device);Wire.write(reg);if(Wire.endTransmission(false)!=0)return false;if(Wire.requestFrom(device,(uint8_t)1)!=(uint8_t)1)return false;value=Wire.read();return true;}
   bool writeRegister(uint8_t device,uint8_t reg,uint8_t value){Wire.beginTransmission(device);Wire.write(reg);Wire.write(value);return Wire.endTransmission()==0;}
   void setBuzzer(bool on){if(on)expanderOutput_|=1u<<5;else expanderOutput_&=~(1u<<5);writeRegister(TCA9554,1,expanderOutput_);}
   void writeReadme(){if(SD_MMC.exists("/hud/README.txt"))return;File f=SD_MMC.open("/hud/README.txt",FILE_WRITE);if(!f)return;f.println("Kia XCeed HUD resource card");f.println("fonts/: reserved for LVGL binary fonts (.bin)");f.println("icons/: HUD RGB565 resources uploaded by the Web UI (.rgb565)");f.close();}
-  bool expanderPresent_=false,batteryPresent_=false,sdMounted_=false;uint8_t expanderConfig_=0xff,expanderOutput_=0,batteryStatus_=0;uint32_t beepUntil_=0,lastBatteryRead_=0;
+  bool expanderPresent_=false,batteryPresent_=false,sdMounted_=false,sdWritable_=false;uint8_t expanderConfig_=0xff,expanderOutput_=0,batteryStatus_=0,sdAttempts_=0,sdCardType_=CARD_NONE;uint32_t beepUntil_=0,lastBatteryRead_=0,sdFrequencyKhz_=0;uint64_t sdCardSize_=0;char sdStage_[24]="not-started";
 };
 }
