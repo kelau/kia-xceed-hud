@@ -19,7 +19,9 @@ is documented for the next hardware-tested milestone.
 - One-client captive portal, five-minute join window, 15-minute session and motion revocation
 - Physically activated, ten-minute phone-hotspot OTA maintenance mode
 - Live configurable LCD/browser widget dashboard and OBD-II simulation mode
-- Status, Config, Display, Frames and About web pages
+- Status, Config, Display, Frames, Files, Diagnostics and About web pages
+- Authenticated TF-card manager with browsing, upload, download, rename, folder creation,
+  guarded deletion and capacity reporting
 - Live Server-Sent Event telemetry, LCD preview, searchable CAN frame ring buffer and
   standard OBD-II PID decoding
 - Data model and wiring plan for future ATGM336H GPS and BMI160 IMU support
@@ -62,6 +64,6 @@ random upload password. See [docs/BUILDING.md](docs/BUILDING.md#ota-maintenance)
 - [Safety and vehicle discovery](docs/SAFETY.md)
 - [Roadmap and recommendations](docs/ROADMAP.md)
 
-License: MIT. Version: 0.15.3.
+License: MIT. Version: 0.15.4.
 
 Runtime performance is available on the Status page and from `GET /api/performance`. It reports per-core current, rolling-average and peak utilization from the FreeRTOS idle-task runtime counters; loop, LCD, CAN and web-handler durations; missed 20 ms display deadlines; and dropped or coalesced CAN-frame totals.
