@@ -3,6 +3,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'web', 'app.js'), 'utf8');
+const features = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'web', 'features.js'), 'utf8');
+const runtime = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'web', 'runtime.js'), 'utf8');
+const webSources = ['index.html', 'app.js', 'analysis.js', 'features.js', 'runtime.js']
+  .map(name => fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'web', name), 'utf8'));
 const required = [
   'speed', 'rpm', 'power', 'soc', 'load', 'coolant', 'intakeTemp',
   'throttle', 'voltage', 'ambientTemp', 'fuelRate', 'trip', 'gpsSpeed',
@@ -17,5 +21,16 @@ assert.match(source, /widgets\.find\(w=>w\.id===id\)\|\|widgetTemplate\(id\)/,
   'palette must provide a template when a display has no persisted metric widget');
 assert.match(source, /if\(!existing\)widgets\.push\(w\)/,
   'dropping a missing metric must add a new widget to the selected display');
+assert.match(source, /widgets:configData\.widgets/,
+  'saving a virtual display must not replace the main display widget array');
+assert.match(features, /function storeDisplay\(\).*d\.widgets=widgets/,
+  'the selected virtual display must be stored before saving');
+assert.match(features, /\/hud\/graphics/,
+  'graphic resources must use the dedicated SD card folder');
+assert.match(runtime, /page === "status"/,
+  'stream updates must be gated by the visible page');
+for (const text of webSources) {
+  assert.doesNotMatch(text, /Â|â|Ã/, 'Web UI source contains mojibake');
+}
 
 console.log(`Verified ${required.length} standard widget metrics and template restoration.`);
