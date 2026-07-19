@@ -1,7 +1,7 @@
 #pragma once
 #include "Core.h"
 namespace hud {
-inline constexpr uint32_t SIMULATED_CAN_FPS=1000;
+inline constexpr uint32_t SIMULATED_CAN_FPS=100;
 inline constexpr uint32_t SIMULATED_CAN_PERIOD_US=1000000/SIMULATED_CAN_FPS;
 inline constexpr uint8_t SIMULATED_CAN_MAX_CATCH_UP=64;
 

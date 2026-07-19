@@ -9,7 +9,7 @@ int main(){
   CanFrame rpm{0x7E8,5,{4,0x41,0x0C,0x1F,0x40},100};assert(decodeObd(rpm,t)&&t.rpm==2000);
   CanFrame temp{0x7E8,4,{3,0x41,0x05,100},100};assert(decodeObd(temp,t)&&t.coolantC==60);
   assert(obdDescription(speed)=="Speed 88 km/h");assert(obdDescription(rpm)=="RPM 2000");
-  Telemetry simulated;int decoded=0,rawFrames=0;for(uint32_t i=0;i<200;i++){auto f=simulatedFrame(1000+i,i);decoded+=decodeObd(f,simulated);rawFrames+=f.id!=0x7E8;}assert(decoded>=8&&rawFrames==190&&simulated.speedKph>0&&simulated.rpm>0&&simulated.coolantC>0&&simulated.engineLoad>0);assert(SIMULATED_CAN_FPS==1000&&SIMULATED_CAN_PERIOD_US==1000);
+  Telemetry simulated;int decoded=0,rawFrames=0;for(uint32_t i=0;i<200;i++){auto f=simulatedFrame(1000+i,i);decoded+=decodeObd(f,simulated);rawFrames+=f.id!=0x7E8;}assert(decoded>=8&&rawFrames==190&&simulated.speedKph>0&&simulated.rpm>0&&simulated.coolantC>0&&simulated.engineLoad>0);assert(SIMULATED_CAN_FPS==100&&SIMULATED_CAN_PERIOD_US==10000);
   assert(frameMatches(speed,"7e8"));assert(frameMatches(speed,"41 0D"));assert(!frameMatches(speed,"7DF"));
   assert(frameTypeKey(temp)=="7E8:05");float value=0,realMin=0,realMax=0;const char*unit=nullptr;assert(frameMetric(temp,value,realMin,realMax,unit));assert(value==60&&realMin==-40&&realMax==215&&std::string(unit)=="C");
   CanFrame volts{0x7E8,5,{4,0x41,0x42,0x30,0x39},200};assert(frameMetric(volts,value,realMin,realMax,unit));assert(value>12.34f&&value<12.36f&&std::string(unit)=="V");

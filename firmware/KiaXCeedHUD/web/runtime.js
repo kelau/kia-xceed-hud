@@ -27,8 +27,8 @@
     state.peakLatencyMs = Math.max(state.peakLatencyMs, state.lastLatencyMs);
     if (!response.ok) throw new Error(`Compatibility API returned ${response.status}`);
     state.compatibility = await response.json();
-    if (state.compatibility.uiVersion !== "0.16.0" || state.compatibility.apiVersion !== 2)
-      throw new Error(`Incompatible Web UI: expected UI 0.16.0 / API 2, received UI ${state.compatibility.uiVersion} / API ${state.compatibility.apiVersion}`);
+    if (state.compatibility.uiVersion !== "0.16.1" || state.compatibility.apiVersion !== 2)
+      throw new Error(`Incompatible Web UI: expected UI 0.16.1 / API 2, received UI ${state.compatibility.uiVersion} / API ${state.compatibility.apiVersion}`);
     window.HUD_STARTED = true;
     const panel = document.getElementById("bootError");
     if (panel) panel.hidden = true;
