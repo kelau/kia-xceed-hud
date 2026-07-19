@@ -6,15 +6,15 @@
 #include "StandardPids.h"
 
 namespace hud {
-inline constexpr const char* FIRMWARE_VERSION="0.16.1";
+inline constexpr const char* FIRMWARE_VERSION="0.16.3";
 inline constexpr uint16_t CONFIG_SCHEMA_VERSION=3;
 #if defined(__GNUC__)
 struct __attribute__((packed)) CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
 #else
 struct CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
 #endif
-inline constexpr uint32_t FRAME_HISTORY_MS=300000;
-inline constexpr size_t FRAME_HISTORY_CAPACITY=300000;
+inline constexpr uint32_t FRAME_HISTORY_MS=120000;
+inline constexpr size_t FRAME_HISTORY_CAPACITY=120000;
 struct Telemetry {
   float speedKph=0, rpm=0, coolantC=0, soc=0, engineLoad=0;
   float intakeTempC=0, throttlePct=0, controlVoltage=0, ambientTempC=0, fuelRateLph=0;

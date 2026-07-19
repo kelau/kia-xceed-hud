@@ -1,10 +1,11 @@
 #include "Core.h"
 #include "ObdSimulator.h"
+#include "FrameAnalytics.h"
 #include <cassert>
 #include <iostream>
 using namespace hud;
 int main(){
-  static_assert(FRAME_HISTORY_MS==300000);static_assert(FRAME_HISTORY_CAPACITY>=300000);
+  static_assert(FRAME_HISTORY_MS==120000);static_assert(FRAME_HISTORY_CAPACITY>=120000);
   Telemetry t; CanFrame speed{0x7E8,4,{3,0x41,0x0D,88},100};assert(decodeObd(speed,t)&&t.speedKph==88);
   CanFrame rpm{0x7E8,5,{4,0x41,0x0C,0x1F,0x40},100};assert(decodeObd(rpm,t)&&t.rpm==2000);
   CanFrame temp{0x7E8,4,{3,0x41,0x05,100},100};assert(decodeObd(temp,t)&&t.coolantC==60);
@@ -13,6 +14,7 @@ int main(){
   assert(frameMatches(speed,"7e8"));assert(frameMatches(speed,"41 0D"));assert(!frameMatches(speed,"7DF"));
   assert(frameTypeKey(temp)=="7E8:05");float value=0,realMin=0,realMax=0;const char*unit=nullptr;assert(frameMetric(temp,value,realMin,realMax,unit));assert(value==60&&realMin==-40&&realMax==215&&std::string(unit)=="C");
   CanFrame volts{0x7E8,5,{4,0x41,0x42,0x30,0x39},200};assert(frameMetric(volts,value,realMin,realMax,unit));assert(value>12.34f&&value<12.36f&&std::string(unit)=="V");
+  FrameAnalytics analytics;analytics.record(speed);analytics.record(CanFrame{0x7E8,4,{3,0x41,0x0D,90},1100});auto speedStats=analytics.find("7E8:0D");assert(speedStats);auto summary=analytics.summarize(*speedStats,1100);assert(summary.count==2&&summary.metric&&summary.minimum==88&&summary.maximum==90&&summary.latest==90);analytics.record(CanFrame{0x7E8,4,{3,0x41,0x0D,91},FRAME_HISTORY_MS+2200});summary=analytics.summarize(*speedStats,FRAME_HISTORY_MS+2200);assert(summary.count==1&&summary.latest==91);
   assert(decodeObd(volts,t)&&t.controlVoltage>12.34f&&t.controlVoltage<12.36f);
   CanFrame throttle{0x7E8,4,{3,0x41,0x11,128},210};assert(decodeObd(throttle,t)&&t.throttlePct>50.1f&&t.throttlePct<50.3f);
   CanFrame intake{0x7E8,4,{3,0x41,0x0F,70},220};assert(decodeObd(intake,t)&&t.intakeTempC==30);

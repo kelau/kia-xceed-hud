@@ -5,10 +5,15 @@ ESP32 TWAI driver. `Core.h` contains portable frame, PID, layout, telemetry and
 authentication logic. `Config` persists a bounded JSON model in NVS. The main
 sketch coordinates the LVGL display and async HTTP service.
 
-CAN reception is non-blocking and stored in a 256-frame RAM ring. Only the newest
-100 matching frames are returned by the API, preventing an HTTP client from
-exhausting memory. Standard ISO 15765 responses (0x7E8–0x7EF, mode 01) are decoded.
-Kia-specific PHEV signals require capture and validation before inclusion.
+CAN reception is non-blocking and stored in a two-minute PSRAM ring. Only the
+newest 100 frames are returned by the live API. Normal Frames-page requests use
+a bounded per-frame-type cache containing one-second count, range, latest-value,
+and change buckets instead of rescanning the raw ring. Browser notifications are
+coalesced to one refresh per second with at most one list and one detail request
+in flight. Real CAN receive work is capped at 3 ms per main-loop pass so LVGL has
+a regular service opportunity. Standard ISO 15765 responses (0x7E8-0x7EF, mode
+01) are decoded. Kia-specific PHEV signals require capture and validation before
+inclusion.
 
 Security is presence-based. A physical touch creates a temporary WPA2 AP with a
 random SSID suffix and a fresh 20-character password held only in RAM. A standard
