@@ -27,8 +27,8 @@
     state.peakLatencyMs = Math.max(state.peakLatencyMs, state.lastLatencyMs);
     if (!response.ok) throw new Error(`Compatibility API returned ${response.status}`);
     state.compatibility = await response.json();
-    if (state.compatibility.uiVersion !== "0.15.7" || state.compatibility.apiVersion !== 2)
-      throw new Error(`Incompatible Web UI: expected UI 0.15.7 / API 2, received UI ${state.compatibility.uiVersion} / API ${state.compatibility.apiVersion}`);
+    if (state.compatibility.uiVersion !== "0.15.8" || state.compatibility.apiVersion !== 2)
+      throw new Error(`Incompatible Web UI: expected UI 0.15.8 / API 2, received UI ${state.compatibility.uiVersion} / API ${state.compatibility.apiVersion}`);
     window.HUD_STARTED = true;
     const panel = document.getElementById("bootError");
     if (panel) panel.hidden = true;
@@ -43,7 +43,7 @@
       if (name === "can" && page === "status" && typeof refreshCanStatus === "function") refreshCanStatus();
       if (name === "frames" && page === "frames" && typeof loadFrames === "function") {
         loadFrames();
-        if (typeof selectedFrameKey !== "undefined" && selectedFrameKey && !selectedFrameKey.startsWith("stream:") && typeof loadDetail === "function") loadDetail(selectedFrameKey);
+        window.HUD_REFRESH_SELECTED_FRAME?.();
       }
     } catch (error) {
       state.errors.push(String(error));

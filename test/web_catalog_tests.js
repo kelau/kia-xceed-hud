@@ -5,6 +5,7 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'web', 'app.js'), 'utf8');
 const features = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'web', 'features.js'), 'utf8');
 const runtime = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'web', 'runtime.js'), 'utf8');
+const analysis = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'web', 'analysis.js'), 'utf8');
 const dashboard = fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'src', 'Dashboard.h'), 'utf8');
 const webSources = ['index.html', 'app.js', 'analysis.js', 'features.js', 'runtime.js']
   .map(name => fs.readFileSync(path.join(__dirname, '..', 'firmware', 'KiaXCeedHUD', 'web', name), 'utf8'));
@@ -36,6 +37,10 @@ assert.match(source, /new Uint8Array\(raw\)/,
   'the editor must decode SD-card RGB565 resources');
 assert.doesNotMatch(dashboard, /if\(!usesMetricGlyphs\(w\)\)return w\.fontSize/,
   'native large fonts must also be used by time, date, status, and other text widgets');
+assert.match(analysis, /HUD_REFRESH_SELECTED_FRAME/,
+  'frame events must explicitly refresh the selected frame detail');
+assert.match(runtime, /HUD_REFRESH_SELECTED_FRAME/,
+  'the event stream must invoke the selected-frame refresh callback');
 for (const text of webSources) {
   assert.doesNotMatch(text, /Â|â|Ã/, 'Web UI source contains mojibake');
 }
