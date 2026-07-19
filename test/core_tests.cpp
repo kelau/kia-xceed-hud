@@ -4,6 +4,7 @@
 #include <iostream>
 using namespace hud;
 int main(){
+  static_assert(FRAME_HISTORY_MS==300000);static_assert(FRAME_HISTORY_CAPACITY>=300000);
   Telemetry t; CanFrame speed{0x7E8,4,{3,0x41,0x0D,88},100};assert(decodeObd(speed,t)&&t.speedKph==88);
   CanFrame rpm{0x7E8,5,{4,0x41,0x0C,0x1F,0x40},100};assert(decodeObd(rpm,t)&&t.rpm==2000);
   CanFrame temp{0x7E8,4,{3,0x41,0x05,100},100};assert(decodeObd(temp,t)&&t.coolantC==60);

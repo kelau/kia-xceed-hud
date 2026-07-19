@@ -6,9 +6,15 @@
 #include "StandardPids.h"
 
 namespace hud {
-inline constexpr const char* FIRMWARE_VERSION="0.15.8";
+inline constexpr const char* FIRMWARE_VERSION="0.16.0";
 inline constexpr uint16_t CONFIG_SCHEMA_VERSION=3;
+#if defined(__GNUC__)
+struct __attribute__((packed)) CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
+#else
 struct CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
+#endif
+inline constexpr uint32_t FRAME_HISTORY_MS=300000;
+inline constexpr size_t FRAME_HISTORY_CAPACITY=300000;
 struct Telemetry {
   float speedKph=0, rpm=0, coolantC=0, soc=0, engineLoad=0;
   float intakeTempC=0, throttlePct=0, controlVoltage=0, ambientTempC=0, fuelRateLph=0;
@@ -65,6 +71,7 @@ inline std::string obdDescription(const CanFrame& f) {
 }
 inline const char* obdPidName(uint8_t pid){auto d=findPid(pid);return d?d->name:"Unknown Mode 01 PID";}
 inline std::string frameTypeKey(const CanFrame&f){char key[16];if(f.id>=0x7E8&&f.id<=0x7EF&&f.dlc>=3&&f.data[1]==0x41)snprintf(key,sizeof(key),"%03X:%02X",(unsigned)f.id,f.data[2]);else snprintf(key,sizeof(key),"%03X",(unsigned)f.id);return key;}
+inline bool frameTypeMatches(const CanFrame&f,const std::string&expected){char key[16];if(f.id>=0x7E8&&f.id<=0x7EF&&f.dlc>=3&&f.data[1]==0x41)snprintf(key,sizeof(key),"%03X:%02X",(unsigned)f.id,f.data[2]);else snprintf(key,sizeof(key),"%03X",(unsigned)f.id);return expected==key;}
 inline bool frameMetric(const CanFrame&f,float&value,float&realMin,float&realMax,const char*&unit){if(f.id<0x7E8||f.id>0x7EF||f.dlc<4||f.data[1]!=0x41)return false;auto d=findPid(f.data[2]);if(!d||!decodePidValue(*d,&f.data[3],f.dlc-3,value))return false;realMin=d->minimum;realMax=d->maximum;unit=d->unit;return true;}
 inline bool validateWidget(const Widget& w) {
   return !w.id.empty()&&w.x>=0&&w.y>=0&&w.w>=40&&w.h>=30&&w.x+w.w<=480&&w.y+w.h<=480;

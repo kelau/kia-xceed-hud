@@ -41,6 +41,10 @@ assert.match(analysis, /HUD_REFRESH_SELECTED_FRAME/,
   'frame events must explicitly refresh the selected frame detail');
 assert.match(runtime, /HUD_REFRESH_SELECTED_FRAME/,
   'the event stream must invoke the selected-frame refresh callback');
+assert.match(analysis, /\/api\/export\.log/,
+  'the Frames page must expose a SocketCAN/candump export');
+assert.match(source, /samples over/,
+  'frame details must show the duration represented by buffered samples');
 for (const text of webSources) {
   assert.doesNotMatch(text, /Â|â|Ã/, 'Web UI source contains mojibake');
 }
