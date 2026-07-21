@@ -3,6 +3,15 @@
 ## Arduino IDE
 
 Install ESP32 core 3.0.7 or newer and the libraries pinned in `platformio.ini`.
+Before compiling, enable the two-framebuffer extension in Arduino_GFX 1.6.5:
+
+```powershell
+.\tools\patch_arduino_gfx_double_buffer.ps1 -LibraryRoot '<Arduino sketchbook>\libraries\GFX_Library_for_Arduino'
+```
+
+The patch is idempotent and is required because upstream Arduino_GFX currently
+creates only one RGB framebuffer. Without it the HUD cannot atomically present
+completed LVGL frames at VSYNC.
 Open `firmware/KiaXCeedHUD/KiaXCeedHUD.ino`; select ESP32S3 Dev Module, 16 MB
 flash, OPI PSRAM, USB CDC enabled, and compile. Use LVGL 8.4 (not LVGL 9),
 Arduino_GFX and SensorLib; the display/touch pin map is included in the sketch.
