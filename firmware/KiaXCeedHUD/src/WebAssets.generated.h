@@ -170,7 +170,7 @@ $('editor').addEventListener('click',event=>{if(event.target.id==='removeWidget'
 $('togglePalette').onclick=()=>{let body=$('paletteBody'),open=!body.classList.contains('hidden');body.classList.toggle('hidden',open);$('togglePalette').textContent=open?'Expand':'Collapse';$('togglePalette').setAttribute('aria-expanded',String(!open))};
 new MutationObserver(()=>{
   let input=$('wFont');if(!selected||!input||$('wFamily'))return;
-  let sizes=[10,12,14,16,18,20,22,24,26,28,30,34,38,42,48,64,80,96,128,160,192,256,320,400],select=document.createElement('select');
+  let sizes=[10,12,14,16,18,22,26,30,34,38,42,48,64,80,96,128,160,192,256,320,400],select=document.createElement('select');
   select.id='wFont';select.innerHTML=sizes.map(n=>'<option value="'+n+'">'+n+' px</option>').join('');select.value=String(selected.fontSize||18);input.replaceWith(select);
   select.oninput=()=>{selected.fontSize=+select.value;draw()};
   let label=document.createElement('label');label.innerHTML='Font <select id=wFamily><option value=0>Montserrat</option><option value=1>UNSCII Pixel</option><option value=2>DejaVu</option></select>';select.parentElement.before(label);

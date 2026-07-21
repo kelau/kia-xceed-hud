@@ -16,7 +16,7 @@ class DisplayPort {
     buf1_=(lv_color_t*)heap_caps_malloc(480*60*sizeof(lv_color_t),MALLOC_CAP_DMA);frame_=(uint16_t*)heap_caps_calloc(480*480,sizeof(uint16_t),MALLOC_CAP_SPIRAM);if(!buf1_||!frame_)return false;
     instance_=this;lv_disp_draw_buf_init(&draw_,buf1_,nullptr,480*60);
     lv_disp_drv_init(&disp_);disp_.hor_res=480;disp_.ver_res=480;disp_.flush_cb=flush;disp_.draw_buf=&draw_;lv_disp_drv_register(&disp_);
-    lv_indev_drv_init(&input_);input_.type=LV_INDEV_TYPE_POINTER;input_.read_cb=readTouch;lv_indev_drv_register(&input_);return true;
+    lv_indev_drv_init(&input_);input_.type=LV_INDEV_TYPE_POINTER;input_.read_cb=readTouch;input_.long_press_time=700;lv_indev_drv_register(&input_);return true;
   }
   void update(){uint32_t now=millis(),elapsed=now-lastTickMs_;if(elapsed){lv_tick_inc(elapsed);lastTickMs_=now;}lv_timer_handler();}
   void setBrightness(uint8_t percent){
