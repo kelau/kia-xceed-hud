@@ -26,7 +26,7 @@ struct Config {
     {"intakeTemp",20,235,180,60,false},{"throttle",210,235,180,60,false},
     {"voltage",20,305,180,60,false},{"ambientTemp",210,305,180,60,false},
     {"fuelRate",20,375,180,60,false},{"wifiSignal",210,375,180,60,false},
-    {"mode",20,420,180,50,false},{"webAccess",210,420,250,50,false,"",18,0,0x102a38,0xffffff,0,false}
+    {"mode",20,420,180,50,false}
   }};
   std::array<VirtualDisplay,4> virtualDisplays{};
 

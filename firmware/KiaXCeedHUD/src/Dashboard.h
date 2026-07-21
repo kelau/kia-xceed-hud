@@ -15,7 +15,7 @@ class Dashboard {
   void rebuild(const DisplayState& c){
     oldRootPending_=root_;pendingImageBuffers_=imageBuffers_;imageBuffers_.fill(nullptr);cards_.fill(nullptr);titles_.fill(nullptr);values_.fill(nullptr);visuals_.fill(nullptr);for(auto&id:ids_)id.clear();root_=createRoot();lv_obj_add_flag(root_,LV_OBJ_FLAG_HIDDEN);populate(root_,c);
   }
-  void populate(lv_obj_t* root,const DisplayState& c){for(size_t i=0;i<c.widgets.size();i++){auto&w=c.widgets[i];if(!w.visible)continue;cards_[i]=lv_obj_create(root);titles_[i]=lv_label_create(cards_[i]);values_[i]=lv_label_create(cards_[i]);ids_[i]=w.id;configure(i,w);}}
+  void populate(lv_obj_t* root,const DisplayState& c){for(size_t i=0;i<c.widgets.size();i++){auto&w=c.widgets[i];if(!w.visible||w.id=="webAccess")continue;cards_[i]=lv_obj_create(root);titles_[i]=lv_label_create(cards_[i]);values_[i]=lv_label_create(cards_[i]);ids_[i]=w.id;configure(i,w);}}
   void update(const DisplayState& c,const Telemetry&t,uint32_t now){
     for(size_t i=0;i<c.widgets.size();i++){
       if(!cards_[i]||!values_[i])continue;String v;auto&w=c.widgets[i];auto&id=w.id;uint8_t decimals=w.decimals==255?widgetDefaultDecimals(id):w.decimals;float raw=0;bool numeric=true,active=false;
