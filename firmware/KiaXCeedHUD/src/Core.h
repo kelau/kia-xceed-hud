@@ -6,7 +6,7 @@
 #include "StandardPids.h"
 
 namespace hud {
-inline constexpr const char* FIRMWARE_VERSION="0.16.4";
+inline constexpr const char* FIRMWARE_VERSION="0.16.5";
 inline constexpr uint16_t CONFIG_SCHEMA_VERSION=3;
 #if defined(__GNUC__)
 struct __attribute__((packed)) CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
