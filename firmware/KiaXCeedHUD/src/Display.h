@@ -14,8 +14,8 @@ class DisplayPort {
  public:
   static constexpr size_t SCREENSHOT_BYTES=480*480*sizeof(uint16_t);
   bool begin(){
-    Wire.begin(15,7);Wire.setClock(400000);touch_.setPins(-1,16);
-    if(!touch_.begin(Wire,GT911_SLAVE_ADDRESS_L,15,7))return false;
+    Wire.begin(15,7);touch_.setPins(-1,16);
+    if(!touch_.begin(Wire,GT911_SLAVE_ADDRESS_L,15,7))return false;Wire.setClock(400000);
     touch_.setMaxTouchPoint(1);if(!gfx_->begin()||!rgb_->getFrameBuffers(&front_,&back_))return false;memset(front_,0,SCREENSHOT_BYTES);memset(back_,0,SCREENSHOT_BYTES);Cache_WriteBack_Addr((uint32_t)front_,SCREENSHOT_BYTES);Cache_WriteBack_Addr((uint32_t)back_,SCREENSHOT_BYTES);vsyncSemaphore_=xSemaphoreCreateBinary();if(vsyncSemaphore_){gpio_input_enable(GPIO_NUM_39);gpio_set_intr_type(GPIO_NUM_39,GPIO_INTR_NEGEDGE);esp_err_t service=gpio_install_isr_service(ESP_INTR_FLAG_IRAM);if(service==ESP_OK||service==ESP_ERR_INVALID_STATE)vsyncReady_=gpio_isr_handler_add(GPIO_NUM_39,onVsync,this)==ESP_OK;}lv_init();
     buf1_=(lv_color_t*)heap_caps_malloc(480*60*sizeof(lv_color_t),MALLOC_CAP_DMA);frame_=(uint16_t*)heap_caps_calloc(480*480,sizeof(uint16_t),MALLOC_CAP_SPIRAM);if(!buf1_||!frame_)return false;
     instance_=this;lv_disp_draw_buf_init(&draw_,buf1_,nullptr,480*60);
