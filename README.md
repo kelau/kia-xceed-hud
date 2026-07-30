@@ -2,7 +2,7 @@
 
 Open-source driver information display for a 2022 Kia XCeed PHEV, built for the
 Waveshare ESP32-S3-Touch-LCD-4 Rev 3. It combines CAN/OBD-II monitoring, a
-480x480 touch dashboard, and a touch-gated temporary-AP web UI. GPS and IMU integration
+480x480 touch dashboard, and a touch-gated temporary-AP web UI. LC76G GNSS and IMU integration
 is documented for the next hardware-tested milestone.
 
 > **Safety:** This is an experimental accessory, not an automotive instrument.
@@ -24,7 +24,8 @@ is documented for the next hardware-tested milestone.
   guarded deletion and capacity reporting
 - Live Server-Sent Event telemetry, LCD preview, searchable CAN frame ring buffer and
   standard OBD-II PID decoding
-- Data model and wiring plan for future ATGM336H GPS and BMI160 IMU support
+- Non-blocking I2C transport and NMEA decoding for the Waveshare LC76G GNSS,
+  plus a wiring plan for the BMI160 IMU
 - Host unit tests for authentication, OBD decoding, frame filtering and layout
 - Arduino IDE sketch and PlatformIO/VS Code project
 

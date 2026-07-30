@@ -30,3 +30,18 @@ are range checked in firmware. A production evolution should render both targets
 from a shared widget registry. Server-Sent Events notify the browser of live CAN,
 metric, performance, and configuration changes; the browser then fetches the
 corresponding authenticated API resource.
+
+## GNSS
+
+`Lc76gGps` owns the Waveshare/Quectel LC76G I2C transport. UART is not used.
+The LC76G shares `Wire` with the GT911 touch controller on SDA GPIO15 and SCL
+GPIO7. Its state machine separates the command and response phases by 10 ms and
+caps reads at 96 bytes, allowing touch and LCD service between transactions.
+Validated RMC and GGA sentences update fix state, position, ground speed,
+heading, altitude, HDOP and satellite count. Transport presence, byte count,
+errors and fix age are exposed through `/api/status`.
+
+The GNSS interface begins immediately after display initialization, but absence
+of the optional receiver never blocks boot. Configuration remains at the module
+defaults initially; runtime PAIR writes should only be added after the physical
+module has been tested on the shared bus.

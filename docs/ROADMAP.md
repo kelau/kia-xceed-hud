@@ -2,7 +2,8 @@
 
 1. Validate Rev 3 display/touch and CAN on a bench harness, then add hardware-in-
    the-loop smoke tests and a CAN replay mode using sanitized capture fixtures.
-2. Add GPS parsing, BMI160 calibration, complementary filtering, trip persistence
+2. Hardware-validate LC76G I2C reception, add BMI160 calibration, complementary
+   filtering and trip persistence
    and graceful ignition-off shutdown.
 3. Implement ambient/night brightness, over-temperature and low-voltage shutdown,
    stale-data indicators, CAN bus-off recovery and a watchdog health screen.

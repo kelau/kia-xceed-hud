@@ -6,7 +6,7 @@
 #include "StandardPids.h"
 
 namespace hud {
-inline constexpr const char* FIRMWARE_VERSION="0.16.5";
+inline constexpr const char* FIRMWARE_VERSION="0.17.0";
 inline constexpr uint16_t CONFIG_SCHEMA_VERSION=3;
 #if defined(__GNUC__)
 struct __attribute__((packed)) CanFrame { uint32_t id=0; uint8_t dlc=0; std::array<uint8_t,8> data{}; uint32_t ms=0; };
@@ -19,7 +19,8 @@ struct Telemetry {
   float speedKph=0, rpm=0, coolantC=0, soc=0, engineLoad=0;
   float intakeTempC=0, throttlePct=0, controlVoltage=0, ambientTempC=0, fuelRateLph=0;
   float gpsSpeedKph=0, latitude=0, longitude=0, tripKm=0;
-  float accelLong=0, accelLat=0,batteryPercent=-1; bool gpsFix=false,batteryPower=false; uint32_t lastCanMs=0,lastCanUs=0;
+  float gpsHeadingDeg=0,gpsAltitudeM=0,gpsHdop=0;
+  float accelLong=0, accelLat=0,batteryPercent=-1; bool gpsFix=false,batteryPower=false; uint8_t gpsSatellites=0; uint32_t lastGpsMs=0,lastCanMs=0,lastCanUs=0;
 };
 enum WidgetVisualStyle:uint8_t { WIDGET_VALUE=0,WIDGET_BAR=1,WIDGET_GAUGE=2,WIDGET_LIGHT=3 };
 struct Widget { std::string id; int16_t x=0,y=0,w=100,h=70; bool visible=false; char title[32]{}; uint16_t fontSize=18; uint8_t fontFamily=0; uint32_t background=0x102a38,textColor=0xffffff; uint8_t backgroundOpacity=255; bool border=true; uint8_t decimals=255,valueAlign=1,timeFormat=0,visualStyle=WIDGET_VALUE; float visualMin=0,visualMax=0,lightLow=0,lightHigh=0; uint32_t trackColor=0x1f3b4d,accentColor=0x2dd4bf,lowColor=0xef4444,midColor=0xf59e0b,highColor=0x22c55e; uint8_t visualThickness=8,subdivisions=0; char resource[64]{}; bool beepEnabled=false; uint8_t beepWhen=0; float beepThreshold=0; uint32_t beepTimeoutMs=5000; bool showUnit=true; };
