@@ -184,6 +184,7 @@ void loop() {
   }
   static uint32_t nextSimUs=0,simSequence=0;
   if(cfg.simulateObd){uint32_t nowUs=micros();if(!nextSimUs)nextSimUs=nowUs;uint8_t emitted=0;while((int32_t)(nowUs-nextSimUs)>=0&&emitted<SIMULATED_CAN_MAX_CATCH_UP){f=simulatedFrame(millis(),simSequence++);recordFrame(f);frameTotal++;telemetry.lastCanMs=f.ms;telemetry.lastCanUs=micros();decodeObd(f,telemetry);nextSimUs+=SIMULATED_CAN_PERIOD_US;emitted++;}if((int32_t)(nowUs-nextSimUs)>100000){performance->noteCanDropped((nowUs-nextSimUs)/SIMULATED_CAN_PERIOD_US);nextSimUs=nowUs;}}else nextSimUs=0;
+  if(cfg.simulateObd){uint32_t phase=millis()%16000;bool flash=((millis()/500)&1)!=0;telemetry.bodySignalsValid=true;telemetry.brakeLights=phase<3000;telemetry.hazardLights=phase>=12000&&phase<15000;telemetry.leftIndicator=flash&&(telemetry.hazardLights||(phase>=4000&&phase<7000));telemetry.rightIndicator=flash&&(telemetry.hazardLights||(phase>=8000&&phase<11000));}else telemetry.bodySignalsValid=false;
   performance->recordCan(micros()-canStarted);
   static uint32_t lastPid=0; static uint8_t pidIndex=0;
   if(!cfg.simulateObd&&!cfg.canListenOnly && millis()-lastPid>=250) {

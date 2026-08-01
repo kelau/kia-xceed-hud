@@ -13,7 +13,8 @@ const required = [
   'speed', 'rpm', 'power', 'soc', 'load', 'coolant', 'intakeTemp',
   'throttle', 'voltage', 'ambientTemp', 'fuelRate', 'trip', 'gpsSpeed',
   'gpsLock', 'coordinates', 'accel', 'status', 'canAge', 'mode', 'wifi',
-  'wifiSignal', 'version', 'uptime', 'time', 'date', 'webAccess'
+  'wifiSignal', 'version', 'uptime', 'time', 'date', 'webAccess',
+  'brakeLights', 'turnLeft', 'turnRight', 'hazards'
 ];
 
 for (const id of required) {
@@ -45,6 +46,11 @@ assert.match(analysis, /\/api\/export\.log/,
   'the Frames page must expose a SocketCAN/candump export');
 assert.match(source, /samples over/,
   'frame details must show the duration represented by buffered samples');
+for (const id of ['brakeLights', 'turnLeft', 'turnRight', 'hazards']) {
+  assert.match(dashboard, new RegExp(`id=="${id}"`), `LCD renderer is missing ${id}`);
+}
+assert.match(source, /Lighting:\['brakeLights','turnLeft','turnRight','hazards'\]/,
+  'lighting widgets must be grouped in the editor');
 for (const text of webSources) {
   assert.doesNotMatch(text, /Â|â|Ã/, 'Web UI source contains mojibake');
 }

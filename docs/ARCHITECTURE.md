@@ -45,3 +45,13 @@ The GNSS interface begins immediately after display initialization, but absence
 of the optional receiver never blocks boot. Configuration remains at the module
 defaults initially; runtime PAIR writes should only be added after the physical
 module has been tested on the shared bus.
+
+## Exterior-light signals
+
+Brake, left-indicator, right-indicator and hazard widgets are state widgets with
+value and status-light presentations. Simulation mode drives a repeatable
+16-second lighting sequence. These signals are not standardized OBD-II PIDs;
+real-CAN mode therefore reports them as `UNMAPPED` until captures from this exact
+vehicle establish and validate the Kia body-CAN frame IDs, bit positions,
+polarity, counters and checksums. An unknown signal must never be presented as a
+confirmed lamp-off state.

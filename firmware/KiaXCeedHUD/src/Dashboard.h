@@ -28,6 +28,10 @@ class Dashboard {
       else if(id=="canAge"){uint32_t ageUs=micros()-t.lastCanUs;raw=ageUs/1000.0f;v=ageUs<1000?String(ageUs)+(w.showUnit?" us":""):String(raw,1)+(w.showUnit?" ms":"");}else if(id=="coordinates"){numeric=false;v=String(t.latitude,5)+", "+String(t.longitude,5);}
       else if(id=="status"){numeric=false;active=now-t.lastCanMs<1000;v=String(t.gpsFix?"GPS fix | ":"GPS -- | ")+String(now-t.lastCanMs)+"ms";}
       else if(id=="version"){numeric=false;v=FIRMWARE_VERSION;}else if(id=="gpsLock"){numeric=false;active=t.gpsFix;v=t.gpsFix?"LOCKED":"NO FIX";}
+      else if(id=="brakeLights"){numeric=false;active=t.bodySignalsValid&&t.brakeLights;v=!t.bodySignalsValid?"UNMAPPED":active?"BRAKE":"OFF";}
+      else if(id=="turnLeft"){numeric=false;active=t.bodySignalsValid&&t.leftIndicator;v=!t.bodySignalsValid?"UNMAPPED":active?"LEFT":"OFF";}
+      else if(id=="turnRight"){numeric=false;active=t.bodySignalsValid&&t.rightIndicator;v=!t.bodySignalsValid?"UNMAPPED":active?"RIGHT":"OFF";}
+      else if(id=="hazards"){numeric=false;active=t.bodySignalsValid&&t.hazardLights;v=!t.bodySignalsValid?"UNMAPPED":active?"HAZARDS":"OFF";}
       else if(id=="uptime"){numeric=false;v=String(now/1000)+" s";}else if(id=="wifi"){numeric=false;active=WiFi.status()==WL_CONNECTED;v=active?WiFi.localIP().toString():"offline";}else if(id=="battery"){numeric=false;active=t.batteryPower;v=t.batteryPower?"BATTERY BACKUP":"EXTERNAL POWER";}
       else if(id=="intakeTemp"){raw=t.intakeTempC;v=String(raw,(unsigned)decimals)+(w.showUnit?" C":"");}else if(id=="throttle"){raw=t.throttlePct;v=String(raw,(unsigned)decimals)+(w.showUnit?" %":"");}
       else if(id=="voltage"){raw=t.controlVoltage;v=String(raw,(unsigned)decimals)+(w.showUnit?" V":"");}else if(id=="ambientTemp"){raw=t.ambientTempC;v=String(raw,(unsigned)decimals)+(w.showUnit?" C":"");}
